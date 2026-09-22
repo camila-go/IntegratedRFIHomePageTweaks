@@ -40,6 +40,29 @@ snapshot, not a guarantee.
   the nearest opaque ancestor and report a passing figure for text that is
   actually over a photo (see [How this was measured](#how-this-was-measured)).
 
+### Measured instance of this risk (22 Sept)
+
+The field **borders** are where this bites first. `#adadad` on a 1px hairline,
+against whatever the photo puts behind it, pixel-sampled around each field's
+full perimeter:
+
+| | 1440 | 1024 |
+| --- | --- | --- |
+| step 1 borders (3 dropdowns) | 4.28 – 5.56 ✅ | — |
+| step 2 borders, first four | 3.90 – 5.19 ✅ | 4.44 – 5.11 ✅ |
+| **step 2, Zip/Postal border** | 4.27 ✅ | **1.90 ❌** |
+| focus ring (white) | 7.18 – 12.49 ✅ | 4.26 – 11.46 ✅ |
+| 12px hint over the field fill | 4.97 – 5.83 ✅ | — |
+
+**The same component passes at one width and fails at another**, with no code
+difference — at 1024 the Zip/Postal field is the rightmost of five and part of
+its perimeter crosses her skin, where a mid-grey hairline has nowhere to go.
+That is this risk, in one number.
+
+It is left as-is under the decision below. Closing it means a heavier border,
+a lighter border colour, or an opaque field surface — a design-token call, not
+a code fix, and it would change the component everywhere.
+
 ### Decision
 
 **This is a known risk and we are accepting it for now.** Discussed and agreed
@@ -64,7 +87,9 @@ Everything below is computed against the **live page**, not read off the source:
   [§ Contrast](#color-contrast)).
 - Contrast for anything sitting on the hero photo is **sampled from the actual
   image pixels**, mapped through the `object-fit: cover` crop and composited
-  with the radial scrim, then measured per line of text.
+  with both scrim layers. Text is measured **per line**; field borders and
+  focus rings are measured **around each field's full perimeter**, and the
+  12px hints against the field fill composited over the photo.
 - Focus behaviour read from the CSSOM (which selectors define
   `:focus-visible`, which set `outline: none`) and cross-referenced against
   every focusable element on the page.
@@ -214,8 +239,9 @@ text that tells someone their form submission failed.
 8px. Now `0.75rem` (12px), matching `.rfi-field__hint` directly above it. The
 rule carries a comment saying so, and it is recorded in HANDOFF §5b, so nobody
 "restores" the 8px on a later Figma pass without raising it with design.
-Side effect: at 1024 the longer messages ("Enter a 10-digit phone number") wrap
-to two lines inside the 156px columns. Legible, but worth a design look.
+This initially made the longer messages wrap to two lines in the 156px columns
+at 1024; the copy was subsequently shortened so every message fits one line at
+every width (see the follow-up section).
 
 ---
 
@@ -417,7 +443,7 @@ The hero numbers move with the viewport because the photo is `cover` anchored
   narrowest case is step 2 at 1024, where the five-across columns leave
   **120px** for text: "Enter a 10-digit phone number" needed 172px. Now
   "Enter first name" / "Enter last name" / "Enter a valid email" /
-  "Enter 10 digits" / "Enter 5 digits", and step 1's
+  "Enter 10 digits" / "Enter Zip/Postal", and step 1's
   "Select a degree" / "Select area of study" / "Select a specialization".
   The dropped nouns are carried by the adjacent `<label>`, which is what a
   screen reader reads first via `aria-describedby` — "Phone number, Enter 10
@@ -458,6 +484,11 @@ removed, since letters are now valid.
 
 - **A real screen-reader pass.** Everything here is computed or driven
   programmatically. Finding 12 in particular cannot be closed without one.
-- **Design review of two side effects:** the 12px error text wraps to two lines
-  in the 156px columns at 1024, and the desktop scrim darkens the left of the
-  hero slightly more than the Figma comp.
+- **The field borders are the live edge of the accepted risk** (see below and
+  the note at the top). At 1024 the ZIP/Postal field's border measures
+  **1.90:1** — it is the rightmost field and part of its perimeter crosses her
+  skin, where a grey hairline effectively disappears. Covered by the accepted
+  risk, not separately remediated; the fix would be a heavier or
+  lighter-on-dark field border, which is a design-token decision.
+- **Design review of one side effect:** the desktop scrim darkens the left of
+  the hero slightly more than the Figma comp.
