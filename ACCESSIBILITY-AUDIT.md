@@ -12,6 +12,49 @@ Each finding below carries its resolution. The measurements are kept as the
 
 ---
 
+# ⚠️ ACCEPTED RISK — READ FIRST
+
+## Semi-transparent fields over a photograph have no fixed contrast
+
+**The RFI's input fields and dropdowns are semi-transparent and sit directly on
+the hero photograph.** Their contrast — and the contrast of the value text
+inside them, their borders, and their focus rings — is therefore **a function
+of whatever pixels happen to be behind them**, not of a token. It changes with
+the viewport, because the crop changes; it would change again with a different
+hero image, a different crop, or a seasonal photo swap.
+
+**Nothing in this audit measures a fixed value for those components.** Every
+figure below is a reading of *this* photograph at *those* viewports. It is a
+snapshot, not a guarantee.
+
+### Why this matters later
+
+- **Any new hero image can silently break AA**, with no code change and no
+  failing test. A lighter photograph, or one whose subject sits further left,
+  can drop field borders below the 3:1 that 1.4.11 requires without anything
+  in the build noticing.
+- **It does not scale to a template.** If this hero pattern is reused for other
+  pages or campaigns, each new background needs its own pixel-level contrast
+  check. The current scrim values are tuned to this specific frame.
+- **Automated tooling will not catch it.** Standard contrast checkers resolve
+  the nearest opaque ancestor and report a passing figure for text that is
+  actually over a photo (see [How this was measured](#how-this-was-measured)).
+
+### Decision
+
+**This is a known risk and we are accepting it for now.** Discussed and agreed
+in the handoff meeting with **Jake, Scott and Patrick on 22 September 2026**.
+
+The mitigations currently in place are the two-layer scrim behind the hero copy
+(finding #3/#4) and the white focus ring (finding #2). Those make *this* image
+pass. They are not a general solution.
+
+**If the hero image changes, re-run the pixel-sampled contrast check before
+shipping** — the method is described below, and the failures it caught the
+first time were invisible to every other form of testing.
+
+---
+
 ## How this was measured
 
 Everything below is computed against the **live page**, not read off the source:
@@ -347,7 +390,7 @@ The hero numbers move with the viewport because the photo is `cover` anchored
 | 3 | Mobile subtitle contrast | ✅ Fixed |
 | 4 | Required note contrast @769 | ✅ Fixed |
 | 5 | Carousel dot target size | ✅ Fixed |
-| 6 | 8px error text | ✅ Fixed (departs from Figma — see the finding) |
+| 6 | 8px error text | ✅ Fixed (departs from Figma — see the finding); copy also shortened to fit one line everywhere |
 | 7 | Skip link | ✅ Added |
 | 8 | Carousel dot selected state | ❌ Withdrawn — audit error, page was correct |
 | 9 | Megamenu triggers as links | ✅ Fixed |
@@ -367,6 +410,25 @@ The hero numbers move with the viewport because the photo is `cover` anchored
 - Megamenu re-tested after the button conversion: 4 top-level triggers, the 5
   rail tabs still switch panels independently, Escape still closes and returns
   focus.
+
+### Follow-up changes (22 Sept, after the first remediation pass)
+
+- **Error copy shortened so every message fits one line at every width.** The
+  narrowest case is step 2 at 1024, where the five-across columns leave
+  **120px** for text: "Enter a 10-digit phone number" needed 172px. Now
+  "Enter first name" / "Enter last name" / "Enter a valid email" /
+  "Enter 10 digits" / "Enter 5 digits", and step 1's
+  "Select a degree" / "Select area of study" / "Select a specialization".
+  The dropped nouns are carried by the adjacent `<label>`, which is what a
+  screen reader reads first via `aria-describedby` — "Phone number, Enter 10
+  digits". Verified one line at 320, 375, 769, 1024, 1440 and 1920.
+- **The two step-2 radio questions no longer stack.** `flex-wrap` is gone from
+  `.rfi__questions`; the military question shrinks to its 135px min-content
+  and its legend wraps instead, which is what makes the pair fit.
+  ⚠️ **At 1024 the benefits sentence therefore wraps to two lines.** The pair
+  needs 971px and the form is 901px there, so the row and the single line are
+  mutually exclusive at that width — the row wins. The single line returns at
+  1150+, where it fits beside the other question.
 
 ### Still outstanding
 

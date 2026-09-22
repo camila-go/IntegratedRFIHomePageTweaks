@@ -2527,44 +2527,44 @@ button {
   }
 }
 
-/* The military-benefits question is one long sentence, and it reads as one
-   line rather than as a wrapped paragraph.
+/* The two step-2 radio questions stay SIDE BY SIDE from 1000px up — they never
+   stack. `.rfi__questions` keeps the `flex-direction: row` it gets in the 769px
+   block and deliberately does NOT wrap: an earlier version set
+   `flex-wrap: wrap`, which let the benefits question drop onto a line of its
+   own, and that is the stacking this is meant to prevent.
 
-   ⚠️ Gated on 1000px, not on the 769px desktop breakpoint, because the line
-   measures 806px and the form is narrower than that below ~920: at an 800px
-   viewport the form is 704 wide, and since the desktop hero sets
-   `overflow: hidden`, a `nowrap` line there is silently CLIPPED rather than
-   scrolled. Measured form widths: 704 at 800, 880 at 1000, 1056 at 1200. So
-   below 1000 it stays an ordinary wrapping paragraph. */
+   The military question is the one that gives way. It shrinks to its
+   min-content (135px — the Yes/No radios) and its legend wraps to two lines,
+   which is why the pair fits at all: 135 + 30 + 806 = 971 against a 1080 form
+   at 1440. */
 @media (min-width: 1000px) {
-  .rfi__question--benefits .rfi__question-legend {
-    white-space: nowrap;
-  }
-}
-
-/* From 1000px the question pair is a row again (see the 769px block), and this
-   one no longer fits the formats question's 770px cap — 770 wraps an 806px
-   sentence every time. Nor does it always fit BESIDE the military question:
-   the pair needs 313 + 30 + 806 = 1149px, and the form is 880 at 1000, 1056 at
-   1200 and 1080 at 1440, reaching its full 1440 only at a 1920 viewport.
-
-   So let the row wrap. The benefits question shares the row where there's
-   room and takes a line of its own where there isn't. `white-space: nowrap`
-   above is what forces that choice: it raises the fieldset's min-content width
-   to the whole line, and flexbox won't shrink an item below its min-content,
-   so the row breaks instead of squeezing the sentence.
-
-   Gated at 1000 to match the rest of step 2's desktop layout, so 1024 renders
-   the pair exactly the way 1440 does. */
-@media (min-width: 1000px) {
-  .rfi__questions {
-    flex-wrap: wrap;
-    row-gap: 24px; /* the same gap the stacked layout uses */
-  }
-
   .rfi__question--benefits {
     flex: 1 1 auto;
     max-width: none;
+  }
+}
+
+/* The benefits sentence gets its single line only where one actually fits
+   BESIDE the military question.
+
+   ⚠️ The threshold is 1150, not 1000. The pair needs 135 + 30 + 806 = 971px
+   of form. The form is 0.88 × viewport here, so 971 needs a ~1104px viewport;
+   1150 is that with margin. Below it the sentence wraps to two lines and the
+   two questions still share the row — which is the trade this breakpoint
+   exists to make.
+
+   ⚠️ At 1024 you can have the questions on one ROW or the sentence on one
+   LINE, not both: the form is 901px there and 971 does not fit in it. The row
+   wins, because stacking was the thing being fixed. Shortening the sentence is
+   the only way to have both; that is a copy decision.
+
+   ⚠️ `nowrap` also raises the fieldset's min-content to the full 806px, so
+   below this breakpoint it would force the row to overflow a form that is
+   narrower than that — and the desktop hero is `overflow: hidden`, so it would
+   be silently CLIPPED, not scrolled. Don't lower this threshold. */
+@media (min-width: 1150px) {
+  .rfi__question--benefits .rfi__question-legend {
+    white-space: nowrap;
   }
 }
 

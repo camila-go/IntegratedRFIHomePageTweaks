@@ -259,7 +259,8 @@ Mobile-first base styles, with these override breakpoints (see `styles.css`):
 | `min-width: 769px and max-width: 1199px` | **Tablet hero**: capped at `--hero-height-tablet-max` (760px) via `--hero-cap`, which also re-points the photo's pinned height (§3e). Step **1**'s paired follow-ups stack here; step 2 no longer does — see the next row |
 | `min-width: 769px and max-width: 999px` | Step 2's five text inputs wrap to a 2-up grid, and its question pair stacks. **Above this, step 2 keeps the 1440 layout**: five inputs in one row (~152px at 1000, ~156px at 1024, ~187px at 1199) and the questions laid out by the desktop rules. Deliberate — it is what keeps the hero at its cap on step 2. Below 1000 five columns would be ~110px, too narrow for "Email address" |
 | `min-width: 769px and max-width: 999px` | Hero headline ramps 56px → 100px (§5); step 2's fields and questions stack (see below) |
-| `min-width: 1000px` | **One-off, and the only reason it exists:** the step-2 military-benefits question stops wrapping (`white-space: nowrap` on its legend). Its sentence measures 806px and the form is narrower than that below ~920 — and because the desktop hero is `overflow: hidden`, a nowrap line that doesn't fit is *clipped*, not scrolled. Don't widen this rule down to the 769px hero breakpoint |
+| `min-width: 1150px` | The step-2 military-benefits sentence stops wrapping. It shares a row with the military question at every desktop width; this is the width from which a single 806px line also FITS beside it (the pair needs 135 + 30 + 806 = 971px of form, and the form is 0.88 × viewport). Below it the sentence takes two lines and the row is preserved — at 1024 you can have the row or the line, not both |
+| `min-width: 1000px` | Step 2 takes the desktop layout: five text inputs in one row and the question pair side by side. Below it, the 2-up grid and the stacked questions |
 | `min-width: 1024px` | **Wide carousel layout** (`1440 × 600` card; the faculty portrait and the phone overflow above the card top) |
 | `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, and the step-2 question row gaining `flex-wrap` so the benefits question can take a line of its own when it won't fit beside the military one (it shares the row from 1920). The hero's sizing is owned by its own 769px+ block, not this one |
 | `max-width: 1280px` / `min-width: 1920px` | `--page-gutter` adjustments only (in `tokens.css`) |
@@ -753,6 +754,15 @@ carries custom classes across but obviously not the tag, so icon rules must key
 off a class (`.rfi-field__error-icon`, `.rfi-field__check`) and never
 `.rfi-field__error i` — an element selector silently stops matching the moment
 the kit loads.
+
+⚠️ **The error copy is kept SHORT on purpose — it has to fit one line at every
+width.** The binding case is step 2 at 1024, where the five-across columns
+leave the error bar 120px of text room. "Enter a 10-digit phone number" needed
+172px and wrapped to two lines. The messages are now terse ("Enter 10 digits",
+"Select area of study"), with the dropped noun carried by the adjacent
+`<label>` — which is what a screen reader reads first anyway, via
+`aria-describedby`. **Check the 1024 five-across row before lengthening any of
+them.**
 
 ⚠️ **The error message is 12px, and Figma says 8px. That is deliberate.** 8px
 was the smallest type on the page by a wide margin, and it is the one string a
