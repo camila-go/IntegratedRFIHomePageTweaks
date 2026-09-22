@@ -262,7 +262,7 @@ Mobile-first base styles, with these override breakpoints (see `styles.css`):
 | `min-width: 1150px` | The step-2 military-benefits sentence stops wrapping. It shares a row with the military question at every desktop width; this is the width from which a single 806px line also FITS beside it (the pair needs 135 + 30 + 806 = 971px of form, and the form is 0.88 × viewport). Below it the sentence takes two lines and the row is preserved — at 1024 you can have the row or the line, not both |
 | `min-width: 1000px` | Step 2 takes the desktop layout: five text inputs in one row and the question pair side by side. Below it, the 2-up grid and the stacked questions |
 | `min-width: 1024px` | **Wide carousel layout** (`1440 × 600` card; the faculty portrait and the phone overflow above the card top) |
-| `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, and the step-2 question row gaining `flex-wrap` so the benefits question can take a line of its own when it won't fit beside the military one (it shares the row from 1920). The hero's sizing is owned by its own 769px+ block, not this one |
+| `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, etc. The hero's sizing is owned by its own 769px+ block, not this one, and step 2's question row is owned by the 1000/1150 rows above |
 | `max-width: 1280px` / `min-width: 1920px` | `--page-gutter` adjustments only (in `tokens.css`) |
 
 ⚠️ **The 1023 / 1024 boundary is load-bearing for the carousel.** The phone and
@@ -648,7 +648,7 @@ was removed in this form, not in the design).
 | State | Dropdown | Input field |
 | --- | --- | --- |
 | inactive | 1px `#adadad`, 2px radius, `--field-fill` (uni-black 20%) | same |
-| focused | 2px `#0f7bd9` **ring** (outline, not a border swap — nothing reflows) | same |
+| focused | 2px **white** ring (outline, not a border swap — nothing reflows). Figma/the design system say `#0f7bd9`; that measured 2.26:1 on the hero photo against the 3:1 that 1.4.11 needs, so the token is white here — see `--field-focus-ring` | same |
 | success | — (no such state) | `check` icon `#b0e8c1`, neutral border kept |
 | error | border → `#ffa8a8`, bottom corners squared, message bar below | same |
 | disabled | content (hint + value + caret) at 0.55, **border kept** | — (inputs are never gated) |
@@ -703,20 +703,29 @@ Fill Figma puts on the field, and it is what lifts the hairline border and the
 12px hint off the brighter parts of the hero photo. Measured worst-case, before
 → after adding it:
 
-| | before | after | needs |
+| | fill only | + scrim & white ring | needs |
 | --- | --- | --- | --- |
-| border, degree / area | 2.50 / 2.55 | **3.22 / 3.30** | 3 ✅ |
-| border, specialisation | 2.01 | 2.66 | 3 ❌ |
-| hint 12px `#adadad` | 2.80 | 3.57 | 4.5 ❌ |
-| value band (white) | 5.65 | 7.30 | 4.5 ✅ |
-| focus ring `#0f7bd9` | 1.04–1.32 | 1.38–1.71 | 3 ❌ |
+| border, degree / area | **3.22 / 3.30** | 5.56 / 4.28 | 3 ✅ |
+| border, specialisation | 2.66 ❌ | **4.31** | 3 ✅ |
+| hint 12px `#adadad` | 3.57 ❌ | **4.97–5.83** | 4.5 ✅ |
+| value band (white) | 7.30 | 7.30+ | 4.5 ✅ |
+| focus ring | 1.38–1.71 ❌ (`#0f7bd9`) | **7.18–12.49** (white) | 3 ✅ |
 
-So it fixes two of the three borders and helps everything, but **does not close
-the accessibility gaps on its own**. The specialisation field sits over her
-bright sweater and still falls short; the hint needs a lighter colour than
-`#adadad`, not a darker backdrop; and the focus ring barely moves because blue
-on red is near-isoluminant — darkening the backdrop lowers both sides together.
-Don't treat this fill as having resolved those.
+The fill alone left three gaps. They were closed during the accessibility pass
+by two further changes, not by the fill: the **second scrim layer** on
+`.hero__gradient` (left-anchored on desktop), which darkens the column the form
+sits in, and **switching `--field-focus-ring` to white**, because blue on red
+is near-isoluminant and no amount of darkening moved it — darkening lowers both
+sides together.
+
+⚠️ **The borders are still the fragile part, and they are viewport-dependent.**
+The figures above are step 1 at 1440. At **1024** the step-2 Zip/Postal field is
+the rightmost of five, part of its perimeter crosses her skin, and the same
+`#adadad` hairline measures **1.90:1** — a 1.4.11 failure at that width and not
+at others. This is the accepted risk recorded at the top of
+[`ACCESSIBILITY-AUDIT.md`](ACCESSIBILITY-AUDIT.md): a semi-transparent field on
+a photograph has no fixed contrast. Don't read these numbers as settled — they
+are readings of one image.
 
 ⚠️ **The whole dropdown box must be the click target — check it if you touch
 the layout.** `.rfi-field__box--select` is a single-cell **grid** with the hint
@@ -792,8 +801,9 @@ sets no minimum font size, so this was never a conformance failure; it is a
 legibility call, taken during the accessibility pass (finding #6 in
 [`ACCESSIBILITY-AUDIT.md`](ACCESSIBILITY-AUDIT.md)). 12px matches
 `.rfi-field__hint` directly above it. **Don't restore the 8px on a later Figma
-sync without raising it with design.** Known side effect: at 1024, where step
-2's columns are 156px, the longer messages wrap to two lines.
+sync without raising it with design.** The 12px initially made the longer
+messages wrap in the 156px columns at 1024; the copy was shortened so they fit
+one line — see the note above.
 
 ---
 
