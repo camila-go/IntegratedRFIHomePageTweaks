@@ -430,6 +430,30 @@ The hero numbers move with the viewport because the photo is `cover` anchored
   mutually exclusive at that width — the row wins. The single line returns at
   1150+, where it fits beside the other question.
 
+### Field-state bug found after the audit (22 Sept)
+
+Not one of the original 12 — it surfaced in review and is worth recording
+because it has an accessibility dimension as well as a visual one.
+
+**Blurring an empty field cleared its error.** After submitting step 2 empty,
+all five fields went red; clicking away from the one you were in then wiped
+its error, because `blur` ran the evaluator, found the value still empty, and
+took "empty" to mean "no state". The first field showed it most often, since
+submit focuses it. Alongside the missing red bar, `aria-invalid` flipped back
+to `false` — so a screen reader was told the field was fine while the form
+still refused to submit (3.3.1).
+
+Fixed with a `submitted` WeakSet: "empty means neutral" still applies before a
+submit, and after one, validity decides. Verified end to end — neutral on
+pre-submit blur, five errors on submit, error surviving a click away, cleared
+by typing a valid value, and re-applied on blur after emptying the field
+again.
+
+**Zip/Postal is no longer US-only.** Relabelled from "ZIP code", and the
+`[0-9]{5}` pattern relaxed to accept Canadian, UK and European formats — it
+had been rejecting exactly what the new label invites. `inputmode="numeric"`
+removed, since letters are now valid.
+
 ### Still outstanding
 
 - **A real screen-reader pass.** Everything here is computed or driven

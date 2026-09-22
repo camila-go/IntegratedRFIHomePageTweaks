@@ -610,13 +610,31 @@ function initHeroRfi() {
   // Validate on blur, not on every keystroke: marking a half-typed email as an
   // error is noise. Success shows the same way, so a field the user completed
   // reads as done.
+  //
+  // ⚠️ Once a submit has flagged a field, an EMPTY value has to keep the error.
+  // The rule below used to be "empty means no state", unconditionally, which
+  // meant the submit painted every empty field red and then the first click
+  // elsewhere wiped the error off whichever one you had just been in — the
+  // field you were most likely to be looking at. Blur fired, the value was
+  // still empty, and the error cleared itself.
+  //
+  // "Empty means no state" is still right BEFORE a submit: someone tabbing
+  // through the form should not be shouted at for fields they haven't reached.
+  // After a submit it is wrong, because the form has already told them the
+  // field is required. `submitted` is that distinction.
+  const submitted = new WeakSet();
+
   form.querySelectorAll('.rfi-field__input').forEach((input) => {
     const evaluate = () => {
-      if (!input.value) {
+      // Untouched by a submit and empty: stay neutral.
+      if (!input.value && !submitted.has(input)) {
         setError(input, false);
         setSuccess(input, false);
         return;
       }
+      // Otherwise let validity decide. Every one of these inputs is
+      // `required`, so an empty value fails and the error persists until it is
+      // actually filled in.
       const valid = input.checkValidity();
       setError(input, !valid);
       setSuccess(input, valid);
@@ -692,6 +710,9 @@ function initHeroRfi() {
     if (!step2 || step2.hidden) return;
     let firstBad = null;
     step2.querySelectorAll('.rfi-field__input').forEach((input) => {
+      // From here on, blurring this field empty keeps the error rather than
+      // clearing it — see the `submitted` set above.
+      submitted.add(input);
       const valid = input.checkValidity();
       setError(input, !valid);
       setSuccess(input, valid);

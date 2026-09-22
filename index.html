@@ -723,16 +723,21 @@
                 <div class="rfi-field" data-rfi-field>
                   <div class="rfi-field__shell">
                     <div class="rfi-field__box">
-                      <label class="visually-hidden" for="rfi-zip">ZIP code</label>
+                      <label class="visually-hidden" for="rfi-zip">Zip/Postal code</label>
+                      <!-- Zip OR postal, so the validation can't be US-only.
+                           `[0-9]{5}` rejected exactly what the label now
+                           invites (K1A 0B1, SW1A 1AA), and `inputmode=numeric`
+                           put a keypad in front of people who need letters.
+                           3-10 alphanumerics with spaces and hyphens covers
+                           US 5 and ZIP+4, Canadian and UK formats. -->
                       <input
                         id="rfi-zip"
                         class="rfi-field__control rfi-field__input"
                         type="text"
                         name="zip"
                         autocomplete="postal-code"
-                        inputmode="numeric"
-                        pattern="[0-9]{5}"
-                        placeholder="ZIP code"
+                        pattern="[A-Za-z0-9][A-Za-z0-9 \-]{1,9}"
+                        placeholder="Zip/Postal"
                         aria-describedby="rfi-zip-error"
                         required
                       />
@@ -740,7 +745,7 @@
                     </div>
                     <p class="rfi-field__error" id="rfi-zip-error" role="alert" hidden>
                       <i class="rfi-field__error-icon fa-sharp fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-                      <span>Enter 5 digits</span>
+                      <span>Enter Zip/Postal</span>
                     </p>
                   </div>
                 </div>

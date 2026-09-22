@@ -755,6 +755,27 @@ off a class (`.rfi-field__error-icon`, `.rfi-field__check`) and never
 `.rfi-field__error i` — an element selector silently stops matching the moment
 the kit loads.
 
+⚠️ **An empty field keeps its error once a submit has flagged it.** The rule
+is *not* "empty means no state" — that was the original, and it had a bug worth
+remembering: the submit painted every empty field red, then the first click
+elsewhere wiped the error off whichever field you had just been in, because
+`blur` fired, the value was still empty, and the handler cleared it. The field
+you were most likely to be looking at was the one that lost its error.
+
+A `submitted` WeakSet in `initHeroRfi()` draws the line. Before a submit,
+blurring an empty field stays neutral — someone tabbing through should not be
+shouted at for fields they have not reached. After a submit, validity decides,
+and since every step-2 input is `required` an empty value keeps the error until
+it is genuinely filled. Emptying a filled field re-errors on blur.
+
+⚠️ **The Zip/Postal field is not US-only.** It was `pattern="[0-9]{5}"` with
+`inputmode="numeric"`, which rejected exactly what the label now invites —
+`K1A 0B1`, `SW1A 1AA` — and put a number pad in front of people who need
+letters. It is now `[A-Za-z0-9][A-Za-z0-9 \-]{1,9}` with no `inputmode`,
+covering US 5-digit and ZIP+4, Canadian, UK and most European formats.
+Verified: 12345, 12345-6789, K1A 0B1, SW1A 1AA, 2000, 75008 all pass; empty,
+`@@@`, a single character and 14 characters all fail.
+
 ⚠️ **The error copy is kept SHORT on purpose — it has to fit one line at every
 width.** The binding case is step 2 at 1024, where the five-across columns
 leave the error bar 120px of text room. "Enter a 10-digit phone number" needed
