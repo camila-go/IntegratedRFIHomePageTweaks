@@ -754,6 +754,16 @@ off a class (`.rfi-field__error-icon`, `.rfi-field__check`) and never
 `.rfi-field__error i` — an element selector silently stops matching the moment
 the kit loads.
 
+⚠️ **The error message is 12px, and Figma says 8px. That is deliberate.** 8px
+was the smallest type on the page by a wide margin, and it is the one string a
+user most needs to read — the one telling them their submission failed. WCAG
+sets no minimum font size, so this was never a conformance failure; it is a
+legibility call, taken during the accessibility pass (finding #6 in
+[`ACCESSIBILITY-AUDIT.md`](ACCESSIBILITY-AUDIT.md)). 12px matches
+`.rfi-field__hint` directly above it. **Don't restore the 8px on a later Figma
+sync without raising it with design.** Known side effect: at 1024, where step
+2's columns are 156px, the longer messages wrap to two lines.
+
 ---
 
 ### 5c. The hero hugs the form, and animates between sizes

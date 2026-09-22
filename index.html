@@ -153,6 +153,10 @@
     </script>
   </head>
   <body>
+    <!-- Nine focus stops sit between here and <main> (many more with a megamenu
+         open). The <main> landmark covers screen-reader users; this covers
+         sighted keyboard users. Invisible until focused — see `.skip-link`. -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="utility-bar">
       <div class="utility-bar__inner page-container">
         <a href="tel:1-866-679-9682" class="utility-bar__link">1-866-679-9682</a>
@@ -193,7 +197,7 @@
                so the existing .main-nav__links a styling still applies. -->
           <ul class="main-nav__links">
             <li class="main-nav__item">
-              <a href="#" aria-haspopup="true" aria-expanded="false" aria-controls="menu-degrees">Degrees &amp; Programs</a>
+              <button type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-degrees">Degrees &amp; Programs</button>
               <div class="megamenu megamenu--split" id="menu-degrees" hidden>
                   <div class="megamenu__col megamenu__col--levels">
                     <p class="megamenu__title">Degrees &amp; Programs</p>
@@ -290,7 +294,7 @@
               </div>
             </li>
             <li class="main-nav__item">
-              <a href="#" aria-haspopup="true" aria-expanded="false" aria-controls="menu-experience">Capella Experience</a>
+              <button type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-experience">Capella Experience</button>
               <div class="megamenu megamenu--list" id="menu-experience" hidden>
                   <div class="megamenu__group">
                     <h3 class="megamenu__group-title"><a href="#">About Capella</a></h3>
@@ -323,7 +327,7 @@
               </div>
             </li>
             <li class="main-nav__item">
-              <a href="#" aria-haspopup="true" aria-expanded="false" aria-controls="menu-financing">Financing</a>
+              <button type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-financing">Financing</button>
               <div class="megamenu megamenu--list" id="menu-financing" hidden>
                   <div class="megamenu__group">
                     <h3 class="megamenu__group-title"><a href="#">Paying for Your Degree</a></h3>
@@ -355,7 +359,7 @@
               </div>
             </li>
             <li class="main-nav__item">
-              <a href="#" aria-haspopup="true" aria-expanded="false" aria-controls="menu-admissions">Admissions</a>
+              <button type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-admissions">Admissions</button>
               <div class="megamenu megamenu--list" id="menu-admissions" hidden>
                   <div class="megamenu__group">
                     <h3 class="megamenu__group-title"><a href="#">Admission Requirements</a></h3>
@@ -393,7 +397,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <!-- Hero + integrated RFI. Figma "CU-EDU — Phase 3 — Hi-Fi Mockups",
            node 9770:20288 (1920 on page load), 9770:20397 (375) and
            9770:24417 (desktop step 2).
@@ -432,6 +436,10 @@
                problems itself rather than the browser bubbling on a submit
                that is really a "next". -->
           <form class="hero__rfi rfi" id="rfi-form" novalidate>
+            <!-- Swapping steps moves focus to the new panel's first field,
+                 which tells a screen-reader user WHERE they are but not THAT
+                 the step changed. showStep() writes the change here. -->
+            <p class="visually-hidden" data-rfi-status role="status" aria-live="polite"></p>
             <div class="rfi__head">
               <h2 class="rfi__title">Request program information</h2>
               <!-- The labels are buttons, not text: they navigate. `type=button`
@@ -1286,6 +1294,16 @@
             </svg>
           </a>
         </div>
+        <!-- WCAG 2.2.2: the clip starts on its own, loops, and runs 45s
+             alongside other content, so there has to be a way to stop it.
+             `prefers-reduced-motion` already suppresses playback entirely,
+             but that is a system setting, not a control on the page.
+             Rendered only when the video is actually going to play —
+             initActionCta() unhides it. -->
+        <button type="button" class="action-cta__playpause" data-cta-playpause hidden>
+          <span class="action-cta__playpause-icon" aria-hidden="true"></span>
+          <span class="visually-hidden" data-cta-playpause-label>Pause background video</span>
+        </button>
       </section>
     </main>
 
