@@ -1427,6 +1427,27 @@ button {
      `overflow: hidden` and no fold-reserve maths — the hero is as tall as its
      content. The desktop breakpoint re-adds both. */
   padding-top: 240px; /* 192px hero pad + 48px text pad */
+  /* The hero hugs the form, so a step change or a conditional reveal changes
+     its height. settleHeroHeight() pins `height` to the outgoing value, flips
+     it to the incoming one and releases it back to `auto` on transitionend —
+     this is what turns that into a glide instead of a snap. Nothing sets
+     `height` at rest, so the transition is inert until a state actually
+     changes. See §5c. */
+  transition: height var(--duration-med) var(--ease-out-expo);
+}
+
+/* Only while a height transition is in flight. Desktop already clips (see the
+   769px block); mobile does not, and mid-shrink the part of the form that no
+   longer fits would hang over the section below. */
+.hero.is-resizing {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    /* settleHeroHeight() also early-returns, so the height just snaps. */
+    transition: none;
+  }
 }
 
 .hero__background {
@@ -1565,7 +1586,8 @@ button {
 
 /* Two equal columns, each a label sitting on its own rule. The current step's
    rule is white; the other is a muted grey — that contrast IS the progress
-   indicator, so it also carries aria-current on the <li>. */
+   indicator, so the current one also carries aria-current. Both labels are
+   buttons: the stepper navigates as well as reports. */
 .rfi__stepper {
   display: flex;
   width: 100%;
@@ -1574,9 +1596,19 @@ button {
   list-style: none;
 }
 
+/* The <li> is the column now; the button inside fills it edge to edge so the
+   whole half of the stepper is the hit area, not just the six characters of
+   the label. */
+.rfi__stepper > li {
+  display: flex;
+  flex: 1 0 0;
+}
+
 .rfi__step {
   flex: 1 0 0;
-  padding-bottom: 16px;
+  /* The global button reset (top of this file) already drops the border and
+     background; the UA's padding is what's left. */
+  padding: 0 0 16px;
   border-bottom: 2px solid rgba(255, 255, 255, 0.35);
   color: var(--color-white);
   font-family: var(--font-body);
@@ -1587,9 +1619,23 @@ button {
   transition: border-color var(--duration-fast) ease, font-weight var(--duration-fast) ease;
 }
 
+/* Hover brightens the rule short of the full white the current step owns, so
+   "hovered" never reads as "you are here". */
+.rfi__step:hover:not(.rfi__step--current) {
+  border-bottom-color: rgba(255, 255, 255, 0.7);
+}
+
+.rfi__step:focus-visible {
+  outline: var(--nav-focus-ring);
+  outline-offset: var(--nav-focus-offset);
+}
+
 .rfi__step--current {
   border-bottom-color: var(--color-white);
   font-weight: 700;
+  /* You're already here. Still focusable, so the stepper doesn't develop a
+     hole in the tab order as you move between steps. */
+  cursor: default;
 }
 
 .rfi__panel {
@@ -2105,7 +2151,11 @@ button {
        space below it; centring in a 912 box lands within a few px of that and
        holds up when the viewport is shorter than the design. */
     --hero-fold-reserve: 128px; /* utility bar + sticky nav */
-    min-height: min(var(--hero-height), calc(100svh - var(--hero-fold-reserve)));
+    /* The height the VIEWPORT allows. The hero is at least this tall and grows
+       past it when the form needs the room (§5c); the photo does not — it is
+       pinned to this same value, see `.hero__bg-image`. */
+    --hero-cap: min(var(--hero-height), calc(100svh - var(--hero-fold-reserve)));
+    min-height: var(--hero-cap);
     padding: 64px 0;
     overflow: hidden;
   }
@@ -2122,6 +2172,29 @@ button {
      all wall. See the note on `.hero__bg-image`. */
   .hero__bg-image {
     object-position: right top;
+    /* ⚠️ ONE SCALE, ALWAYS. Render at the height the viewport allows, never at
+       the height the hero ends up. `cover` derives its crop from the box it is
+       given, so while this tracked a hero that grows with the form, every
+       extra row of fields zoomed the photo in and walked her face left — at
+       1024 she slid x 626 → 497 between step 1 and step 2 with the benefits
+       question, straight back under the headline. Pinned, the crop is
+       byte-identical in every state, and it is exactly the design's crop
+       whenever the hero sits at its cap. */
+    height: var(--hero-cap);
+    /* `inset: 0` sets `bottom` too and an explicit height over-constrains the
+       box; browsers drop `bottom` here anyway — this just says so out loud. */
+    bottom: auto;
+  }
+
+  /* Only while the hero is taller than the photo — `initHeroRfi()` toggles it.
+     The photo now ends before the hero does, and a hard horizontal edge across
+     her skirt reads as a rendering fault, so the last 120px dissolve into
+     `.hero__background`'s wall red. Unconditional masking would fade the
+     bottom of the photo at 1440 and 1920 too, where the hero never overflows
+     and the design is correct as-is. */
+  .hero--photo-short .hero__bg-image {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 120px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 120px), transparent);
   }
 
   .hero__inner {
@@ -2225,9 +2298,7 @@ button {
     flex: 0 1 371px;
   }
 
-  .rfi__question--formats,
-  /* The benefits question is a long single line, so it takes the wide share. */
-  .rfi__question--benefits {
+  .rfi__question--formats {
     flex: 1 1 770px;
     /* Two things this cap fixes, both about the row looking far looser than the
        design even though the 32px gap is exactly right:
@@ -2265,28 +2336,157 @@ button {
    comes down to match. */
 @media (min-width: 769px) and (max-width: 1199px) {
   .hero {
-    min-height: min(var(--hero-height-tablet-max), calc(100svh - var(--hero-fold-reserve)));
+    /* Redefining the cap re-points BOTH the hero's min-height and the photo's
+       pinned height (`.hero__bg-image`), which have to stay in step. */
+    --hero-cap: min(var(--hero-height-tablet-max), calc(100svh - var(--hero-fold-reserve)));
   }
 
+  /* STEP 1's paired follow-ups keep the full width across this whole band.
+     Side by side the three format options would be ~110px each and wrap
+     mid-label. Step 2's pair is handled separately below — it now tracks the
+     desktop layout from 1000 up. */
+  .rfi__followups {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .rfi__followups .rfi__question,
+  .rfi__followups .rfi__question--formats {
+    flex: 0 1 auto;
+    width: 100%;
+  }
+}
+
+/* Step 2 keeps the 1440 layout down to 1000: five text inputs in ONE row, and
+   the question pair laid out by the desktop rules rather than force-stacked.
+
+   This is a deliberate reversal of the old tablet treatment, which wrapped the
+   five inputs to a 2-up grid because they come out ~156px wide in one row at
+   1024. Narrow, but it keeps the step consistent with the design — and it is
+   what keeps the hero AT its height cap on step 2 instead of overflowing it,
+   which is what was re-zooming the photo and walking her face back under the
+   headline (see §5 and `.hero__bg-image`).
+
+   Below 1000 the 2-up grid still applies: five columns there are ~110px, which
+   is too narrow for "Email address" to be usable rather than merely tight. */
+@media (min-width: 769px) and (max-width: 999px) {
   .rfi__fields--5 {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px 30px;
   }
 
-  /* Paired questions need the full width here — side by side, the three format
-     options would be ~110px each and wrap mid-label, and the benefits question
-     is a long line that would stack to four. */
-  .rfi__followups,
   .rfi__questions {
     flex-direction: column;
     gap: 24px;
   }
 
-  .rfi__question,
-  .rfi__question--formats,
-  .rfi__question--benefits {
+  .rfi__questions .rfi__question,
+  .rfi__questions .rfi__question--benefits {
     flex: 0 1 auto;
     width: 100%;
+  }
+}
+
+/* --- Keep the hero copy off her face --------------------------------------
+   The photo is `object-fit: cover` anchored `right top`, so below ~1270 it goes
+   height-bound: the crop scales to the hero's HEIGHT and the excess width is
+   cropped off the left. The narrower the viewport, the more zoomed she is and
+   the further left her face sits. Measured (skin sampled off the source: she is
+   x 76.3%–81.7% of the frame) with the hero at its viewport cap:
+
+   | viewport | her face starts at | clear width before it |
+   | -------- | ------------------ | --------------------- |
+   | 769      | x 371              | 325px                 |
+   | 1024     | x 626              | 565px                 |
+   | 1199     | x 801              | 729px                 |
+   | 1440     | x 1036             | 856px                 |
+
+   The headline's natural single line is 837px, so it crossed her face at every
+   width below ~1420. Capping the copy makes it wrap in the clear zone instead.
+
+   The 82vw tracks how fast her face moves right as the viewport grows; the
+   332px is the page gutter the copy already sits behind, plus breathing room
+   so the longest line stops short of her rather than butting against her.
+
+   **The formula needs no upper bound.** It reaches 839px at ~1430 — which is
+   both the `min()` ceiling and Figma's own text-frame width — so from there up
+   it resolves to exactly the measure the design already used, and the headline
+   returns to one line on its own. Nothing at or above 1430 is changed.
+
+   ⚠️ This is sized for the hero at its viewport cap, which covers step 1 and
+   most of step 2. It cannot hold for the very tallest states at the narrow
+   end: the hero hugs the form (§5c), and a taller hero means a more zoomed
+   photo, so at 769 with step 2 + the benefits question the hero is 1100px, her
+   face slides to x 193 and the clear zone is 147px — narrower than the word
+   "chasing". No copy width fixes that one; it needs the photo to stop scaling
+   with the hero. */
+@media (min-width: 769px) {
+  .hero__content {
+    /* `--hero-copy-max` is measured from the photo's actual crop by
+       fitHeroCopy(); the calc() is the fallback for no-JS and for the frames
+       before the photo has decoded. The fallback is deliberately the more
+       conservative of the two — it has to hold without knowing the window's
+       height, and a too-narrow headline is a much cheaper failure than one
+       across her face. */
+    max-width: min(839px, var(--hero-copy-max, calc(62vw - 300px)));
+  }
+}
+
+/* Below 1000 the cap alone isn't enough, and it feeds back on itself: a
+   narrower column wraps the 100px headline to three lines, three lines make
+   the hero taller, and a taller hero scales the photo up and walks her face
+   further LEFT — at 769 that ended with the headline crossing her again with
+   the cap already applied. Bringing the headline down with the column breaks
+   the loop in the useful direction: two lines instead of three, a shorter
+   hero, and her face back out to the right. */
+@media (min-width: 769px) and (max-width: 999px) {
+  .hero__title {
+    /* Ramps 56px at 769 → 100px at 1000, where it meets `.display-xl`'s own
+       ceiling exactly, so there is no step at the boundary. (A flat
+       `clamp(…, 7.3vw, 4.5rem)` capped at 72px and then jumped to 100px the
+       moment this query stopped applying.) */
+    font-size: clamp(3.5rem, 19.05vw - 90.5px, 6.25rem);
+  }
+}
+
+/* The military-benefits question is one long sentence, and it reads as one
+   line rather than as a wrapped paragraph.
+
+   ⚠️ Gated on 1000px, not on the 769px desktop breakpoint, because the line
+   measures 806px and the form is narrower than that below ~920: at an 800px
+   viewport the form is 704 wide, and since the desktop hero sets
+   `overflow: hidden`, a `nowrap` line there is silently CLIPPED rather than
+   scrolled. Measured form widths: 704 at 800, 880 at 1000, 1056 at 1200. So
+   below 1000 it stays an ordinary wrapping paragraph. */
+@media (min-width: 1000px) {
+  .rfi__question--benefits .rfi__question-legend {
+    white-space: nowrap;
+  }
+}
+
+/* From 1000px the question pair is a row again (see the 769px block), and this
+   one no longer fits the formats question's 770px cap — 770 wraps an 806px
+   sentence every time. Nor does it always fit BESIDE the military question:
+   the pair needs 313 + 30 + 806 = 1149px, and the form is 880 at 1000, 1056 at
+   1200 and 1080 at 1440, reaching its full 1440 only at a 1920 viewport.
+
+   So let the row wrap. The benefits question shares the row where there's
+   room and takes a line of its own where there isn't. `white-space: nowrap`
+   above is what forces that choice: it raises the fieldset's min-content width
+   to the whole line, and flexbox won't shrink an item below its min-content,
+   so the row breaks instead of squeezing the sentence.
+
+   Gated at 1000 to match the rest of step 2's desktop layout, so 1024 renders
+   the pair exactly the way 1440 does. */
+@media (min-width: 1000px) {
+  .rfi__questions {
+    flex-wrap: wrap;
+    row-gap: 24px; /* the same gap the stacked layout uses */
+  }
+
+  .rfi__question--benefits {
+    flex: 1 1 auto;
+    max-width: none;
   }
 }
 
