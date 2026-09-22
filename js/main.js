@@ -153,8 +153,13 @@ function initCarousel() {
     img.addEventListener('dragstart', (event) => event.preventDefault());
   });
 
-  // Keyboard support.
+  // Keyboard support. A focusable element needs a role and a name or it
+  // announces as nothing; the surrounding <section> is labelled, but focus
+  // lands here, not there. See `.carousel__viewport:focus-visible` for the
+  // indicator this element is required to show.
   viewport.setAttribute('tabindex', '0');
+  viewport.setAttribute('role', 'group');
+  viewport.setAttribute('aria-label', 'Featured stories, use arrow keys to change slide');
   viewport.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowRight') {
       goTo(activeIndex + 1);
@@ -213,6 +218,7 @@ function initHeroRfi() {
   if (!form) return;
 
   const hero = form.closest('.hero');
+  const status = form.querySelector('[data-rfi-status]');
   const panels = [...form.querySelectorAll('[data-rfi-panel]')];
   const steps = [...form.querySelectorAll('[data-rfi-step]')];
   const next = form.querySelector('[data-rfi-next]');
@@ -502,6 +508,16 @@ function initHeroRfi() {
       if (isCurrent) item.setAttribute('aria-current', 'step');
       else item.removeAttribute('aria-current');
     });
+    // Announce the change. Only on a real step change, never on the initial
+    // showStep(1) — an announcement on page load is noise. Writing the text
+    // (rather than un-hiding it) is what makes a live region fire.
+    if (animate && status) {
+      const heading = panels
+        .find((p) => !p.hidden)
+        ?.querySelector('.rfi__prompt-title')
+        ?.textContent.trim();
+      status.textContent = `Step ${step} of ${steps.length}${heading ? `, ${heading}` : ''}`;
+    }
     settleHeroHeight(animate);
     // The finder's parallax cap depends on where the action buttons sit inside
     // the hero, and a step change moves them (step 2 stacks more above them).
@@ -594,13 +610,31 @@ function initHeroRfi() {
   // Validate on blur, not on every keystroke: marking a half-typed email as an
   // error is noise. Success shows the same way, so a field the user completed
   // reads as done.
+  //
+  // ⚠️ Once a submit has flagged a field, an EMPTY value has to keep the error.
+  // The rule below used to be "empty means no state", unconditionally, which
+  // meant the submit painted every empty field red and then the first click
+  // elsewhere wiped the error off whichever one you had just been in — the
+  // field you were most likely to be looking at. Blur fired, the value was
+  // still empty, and the error cleared itself.
+  //
+  // "Empty means no state" is still right BEFORE a submit: someone tabbing
+  // through the form should not be shouted at for fields they haven't reached.
+  // After a submit it is wrong, because the form has already told them the
+  // field is required. `submitted` is that distinction.
+  const submitted = new WeakSet();
+
   form.querySelectorAll('.rfi-field__input').forEach((input) => {
     const evaluate = () => {
-      if (!input.value) {
+      // Untouched by a submit and empty: stay neutral.
+      if (!input.value && !submitted.has(input)) {
         setError(input, false);
         setSuccess(input, false);
         return;
       }
+      // Otherwise let validity decide. Every one of these inputs is
+      // `required`, so an empty value fails and the error persists until it is
+      // actually filled in.
       const valid = input.checkValidity();
       setError(input, !valid);
       setSuccess(input, valid);
@@ -676,6 +710,9 @@ function initHeroRfi() {
     if (!step2 || step2.hidden) return;
     let firstBad = null;
     step2.querySelectorAll('.rfi-field__input').forEach((input) => {
+      // From here on, blurring this field empty keeps the error rather than
+      // clearing it — see the `submitted` set above.
+      submitted.add(input);
       const valid = input.checkValidity();
       setError(input, !valid);
       setSuccess(input, valid);
@@ -1372,7 +1409,16 @@ const MEGA_PROGRAMS = {
 // behaves and avoiding a menu that fires when the pointer merely crosses the
 // bar. Only one is open at a time.
 function initMegaMenu() {
-  const triggers = [...document.querySelectorAll('.main-nav__links a[aria-controls]')];
+  // These are <button>s now, not links: they open a menu rather than
+  // navigating, and as links they only responded to Enter — Space, which
+  // every user expects of a menu trigger, did nothing.
+  //
+  // ⚠️ The child combinator is load-bearing. `a[aria-controls]` used to scope
+  // this on its own; now that the triggers are buttons, a descendant selector
+  // also sweeps up the five `.megamenu__level` rail tabs INSIDE the panels,
+  // which carry `aria-controls` of their own and have their own handler below.
+  // Only the direct children of `.main-nav__item` are top-level triggers.
+  const triggers = [...document.querySelectorAll('.main-nav__item > [aria-controls]')];
   if (!triggers.length) return;
 
   const panelFor = (t) => document.getElementById(t.getAttribute('aria-controls'));
@@ -1805,13 +1851,46 @@ function initCtaVideos() {
     });
   }
 
+  // --- pause control (WCAG 2.2.2) -----------------------------------------
+  // The clip auto-starts, loops and runs 45s beside other content, so it needs
+  // a stop. Only revealed here, inside the branch that actually plays: under
+  // reduced motion this function has already returned and nothing ever moves,
+  // so a pause button would be a control for nothing.
+  const toggle = section.querySelector('[data-cta-playpause]');
+  const toggleLabel = section.querySelector('[data-cta-playpause-label]');
+  // Set by the user, and it outranks the observer from then on — scrolling
+  // away and back must not quietly restart something they stopped.
+  let userPaused = false;
+
+  function syncToggle() {
+    if (!toggle) return;
+    toggle.classList.toggle('is-paused', userPaused);
+    toggle.setAttribute('aria-pressed', String(userPaused));
+    if (toggleLabel) {
+      toggleLabel.textContent = userPaused ? 'Play background video' : 'Pause background video';
+    }
+  }
+
+  if (toggle) {
+    toggle.hidden = false;
+    syncToggle();
+    toggle.addEventListener('click', () => {
+      userPaused = !userPaused;
+      videos.forEach((video) => {
+        if (userPaused) video.pause();
+        else if (video.offsetParent !== null) video.play().catch(() => {});
+      });
+      syncToggle();
+    });
+  }
+
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         videos.forEach((video) => {
           if (video.offsetParent === null) return; // display:none (e.g. mobile)
           if (entry.isIntersecting) {
-            if (video.paused) video.play().catch(() => {});
+            if (video.paused && !userPaused) video.play().catch(() => {});
           } else if (!video.paused) {
             video.pause();
           }

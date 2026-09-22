@@ -102,7 +102,13 @@
      beside each for whenever a light-surface form needs them.
      ⚠️ Two of these differ between the two components in Figma — see the note
      above `.rfi-field--error` in styles.css before "correcting" them. */
-  --field-focus-ring: #0f7bd9; /* gl-color-outline-focused (both themes) */
+  /* ⚠️ White, not the design system's #0f7bd9. The RFI fields sit directly on
+     the hero photograph, and that blue measures 2.26:1 against the wall red
+     behind them — below the 3:1 WCAG 1.4.11 requires of a focus indicator.
+     White is 7.5:1 there and is already what every other focus ring on the
+     page uses (--nav-focus-ring). If this form is ever reused on a light
+     surface, the blue is correct again and this needs to become conditional. */
+  --field-focus-ring: #ffffff;
   --field-error-line: #ffa8a8; /* dark; light = #d91111 */
   --field-error-surface: #9c0c0c; /* dark; light = #fff5f5 */
   --field-error-text: #ffffff; /* dark; light = #9c0c0c */

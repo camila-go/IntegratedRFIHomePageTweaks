@@ -421,6 +421,49 @@ button {
   border: 0;
 }
 
+/* Off-screen rather than `visually-hidden`, because it has to become visible
+   on focus and a 1px clipped box cannot. `z-index` clears the sticky header,
+   which would otherwise cover it at the moment it appears. */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  z-index: 200;
+  padding: 12px 20px;
+  transform: translateY(-120%);
+  border-radius: 0 0 var(--radius-sm, 4px) var(--radius-sm, 4px);
+  background: var(--color-white);
+  color: var(--color-uni-black);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform var(--duration-fast) ease;
+}
+
+/* `:focus`, deliberately not `:focus-visible`. A skip link is only ever
+   reached by keyboard, and it has to appear for ANY focus — including the
+   programmatic kind, which `:focus-visible` does not match. */
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--color-uni-black);
+  outline-offset: -4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
+}
+
+/* The skip target. `tabindex="-1"` makes <main> programmatically focusable so
+   the jump actually moves focus rather than only scrolling — without it,
+   Tab after activating the link resumes from the nav. It must never show a
+   ring of its own: nobody deliberately focuses the whole page body. */
+#main-content:focus {
+  outline: none;
+}
+
 .main-nav__menu-btn {
   display: none;
   align-items: center;
@@ -858,7 +901,7 @@ button {
    handed them the pill's `border-radius: 100px`, its `white-space: nowrap`
    (so long labels overflowed their panel instead of wrapping) and a hover that
    outranked the panels' own. Don't widen this selector again. */
-.main-nav__item > a {
+.main-nav__item > :is(a, button) {
   /* inline-flex (not inline) so the pill's padding gives a full-height hit area
      and so `transform` applies on :active — transforms are ignored on inline
      non-replaced boxes. */
@@ -870,6 +913,9 @@ button {
      still shown. */
   padding: var(--nav-pill-pad-y) var(--nav-pill-pad-x);
   border-radius: var(--nav-pill-radius);
+  /* The four megamenu triggers are <button>s; only the plain links inherit the
+     bar's colour on their own. */
+  color: inherit;
   font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.5;
@@ -879,16 +925,16 @@ button {
     transform var(--duration-fast) ease;
 }
 
-.main-nav__item > a:hover {
+.main-nav__item > :is(a, button):hover {
   background: var(--nav-pill-hover);
 }
 
-.main-nav__item > a:active {
+.main-nav__item > :is(a, button):active {
   background: var(--nav-pill-active);
   transform: scale(0.97);
 }
 
-.main-nav__item > a:focus-visible {
+.main-nav__item > :is(a, button):focus-visible {
   outline: var(--nav-focus-ring);
   outline-offset: var(--nav-focus-offset);
 }
@@ -900,8 +946,8 @@ button {
    Listed AFTER :hover/:active on purpose: same specificity, so this wins and
    the current item keeps its stronger fill while a sibling — or itself — is
    hovered, instead of appearing to "downgrade" to the hover colour. */
-.main-nav__item > a[aria-current='page'],
-.main-nav__item > a[aria-current='page']:hover,
+.main-nav__item > :is(a, button)[aria-current='page'],
+.main-nav__item > :is(a, button)[aria-current='page']:hover,
 .main-nav__mobile-links a[aria-current='page'],
 .main-nav__mobile-links a[aria-current='page']:hover {
   background: var(--nav-pill-current);
@@ -909,8 +955,8 @@ button {
 
 /* An open trigger keeps the current-item fill so you can see which menu you're
    in while the pointer is somewhere inside the panel. */
-.main-nav__item > a[aria-expanded='true'],
-.main-nav__item > a[aria-expanded='true']:hover {
+.main-nav__item > :is(a, button)[aria-expanded='true'],
+.main-nav__item > :is(a, button)[aria-expanded='true']:hover {
   background: var(--nav-pill-current);
 }
 
@@ -1515,12 +1561,38 @@ button {
 .hero__gradient {
   position: absolute;
   inset: 0;
-  /* Figma puts a radial black at 0.7 behind the copy, bottom-centred. */
-  background: radial-gradient(
-    ellipse 80% 60% at 50% 97%,
-    rgba(0, 0, 0, 0.7) 0%,
-    rgba(0, 0, 0, 0) 70%
-  );
+  /* Figma puts a radial black at 0.7 behind the copy, bottom-centred.
+     The second layer is an accessibility fix, not decoration: the copy sits on
+     a photograph, and where her shoulder and skin fall behind it the measured
+     contrast dropped to 3.59:1 on mobile and 4.41:1 at 769 — both under the
+     4.5:1 that 1.4.3 requires of body text. Figma's radial is anchored at 97%
+     height and barely reaches the copy.
+
+     It is a LEFT-anchored linear, so it darkens the column the copy occupies
+     and leaves the subject alone. Verified to lift every failing line above
+     4.5:1; see ACCESSIBILITY-AUDIT.md for the per-line measurements. */
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 97%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.28) 45%, rgba(0, 0, 0, 0) 72%);
+}
+
+/* Mobile needs the scrim on the other axis. The copy runs nearly edge to edge
+   here (345 of 375), so a left-anchored wash misses the failing pixels — they
+   were at the RIGHT end of the subtitle's fourth line, over her shoulder.
+   Vertical instead, transparent across the top third: her head sits at y 3–34%
+   of the mobile crop (§3a), so this darkens the copy without touching her
+   face. */
+@media (max-width: 768px) {
+  .hero__gradient {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 97%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 70%),
+      linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 28%,
+        rgba(0, 0, 0, 0.42) 62%,
+        rgba(0, 0, 0, 0.58) 100%
+      );
+  }
 }
 
 .hero__inner {
@@ -1967,7 +2039,13 @@ button {
   background: var(--field-error-surface);
   color: var(--field-error-text);
   font-family: var(--font-body);
-  font-size: 0.5rem; /* 8px — Figma's error message size */
+  /* ⚠️ DELIBERATE DEPARTURE FROM FIGMA, which specifies 8px here. 8px is the
+     smallest type on the page by a wide margin and it is the copy that tells
+     someone their submission failed — the one string they most need to read.
+     WCAG sets no minimum font size, so this was never a conformance failure;
+     it is a legibility call. 12px matches `.rfi-field__hint` directly above it.
+     Don't "restore" the 8px without taking that up with design. */
+  font-size: 0.75rem; /* 12px — see above; Figma says 8px */
   font-weight: 400;
   line-height: 1.5;
 }
@@ -2449,44 +2527,44 @@ button {
   }
 }
 
-/* The military-benefits question is one long sentence, and it reads as one
-   line rather than as a wrapped paragraph.
+/* The two step-2 radio questions stay SIDE BY SIDE from 1000px up — they never
+   stack. `.rfi__questions` keeps the `flex-direction: row` it gets in the 769px
+   block and deliberately does NOT wrap: an earlier version set
+   `flex-wrap: wrap`, which let the benefits question drop onto a line of its
+   own, and that is the stacking this is meant to prevent.
 
-   ⚠️ Gated on 1000px, not on the 769px desktop breakpoint, because the line
-   measures 806px and the form is narrower than that below ~920: at an 800px
-   viewport the form is 704 wide, and since the desktop hero sets
-   `overflow: hidden`, a `nowrap` line there is silently CLIPPED rather than
-   scrolled. Measured form widths: 704 at 800, 880 at 1000, 1056 at 1200. So
-   below 1000 it stays an ordinary wrapping paragraph. */
+   The military question is the one that gives way. It shrinks to its
+   min-content (135px — the Yes/No radios) and its legend wraps to two lines,
+   which is why the pair fits at all: 135 + 30 + 806 = 971 against a 1080 form
+   at 1440. */
 @media (min-width: 1000px) {
-  .rfi__question--benefits .rfi__question-legend {
-    white-space: nowrap;
-  }
-}
-
-/* From 1000px the question pair is a row again (see the 769px block), and this
-   one no longer fits the formats question's 770px cap — 770 wraps an 806px
-   sentence every time. Nor does it always fit BESIDE the military question:
-   the pair needs 313 + 30 + 806 = 1149px, and the form is 880 at 1000, 1056 at
-   1200 and 1080 at 1440, reaching its full 1440 only at a 1920 viewport.
-
-   So let the row wrap. The benefits question shares the row where there's
-   room and takes a line of its own where there isn't. `white-space: nowrap`
-   above is what forces that choice: it raises the fieldset's min-content width
-   to the whole line, and flexbox won't shrink an item below its min-content,
-   so the row breaks instead of squeezing the sentence.
-
-   Gated at 1000 to match the rest of step 2's desktop layout, so 1024 renders
-   the pair exactly the way 1440 does. */
-@media (min-width: 1000px) {
-  .rfi__questions {
-    flex-wrap: wrap;
-    row-gap: 24px; /* the same gap the stacked layout uses */
-  }
-
   .rfi__question--benefits {
     flex: 1 1 auto;
     max-width: none;
+  }
+}
+
+/* The benefits sentence gets its single line only where one actually fits
+   BESIDE the military question.
+
+   ⚠️ The threshold is 1150, not 1000. The pair needs 135 + 30 + 806 = 971px
+   of form. The form is 0.88 × viewport here, so 971 needs a ~1104px viewport;
+   1150 is that with margin. Below it the sentence wraps to two lines and the
+   two questions still share the row — which is the trade this breakpoint
+   exists to make.
+
+   ⚠️ At 1024 you can have the questions on one ROW or the sentence on one
+   LINE, not both: the form is 901px there and 971 does not fit in it. The row
+   wins, because stacking was the thing being fixed. Shortening the sentence is
+   the only way to have both; that is a copy decision.
+
+   ⚠️ `nowrap` also raises the fieldset's min-content to the full 806px, so
+   below this breakpoint it would force the row to overflow a form that is
+   narrower than that — and the desktop hero is `overflow: hidden`, so it would
+   be silently CLIPPED, not scrolled. Don't lower this threshold. */
+@media (min-width: 1150px) {
+  .rfi__question--benefits .rfi__question-legend {
+    white-space: nowrap;
   }
 }
 
@@ -2673,7 +2751,16 @@ button {
 .carousel__viewport {
   overflow: hidden;
   touch-action: pan-y;
-  outline: none;
+}
+
+/* The viewport is `tabindex="0"` (initCarousel) so arrow keys can drive the
+   slides. It therefore MUST show focus — it previously set `outline: none`,
+   which left keyboard users with no indication they had landed on it at all.
+   Offset is negative so the ring sits inside: the viewport is full-bleed and
+   an outset ring would be clipped by the section. */
+.carousel__viewport:focus-visible {
+  outline: var(--nav-focus-ring);
+  outline-offset: -4px;
 }
 
 .carousel__track {
@@ -2904,16 +2991,25 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-  margin-top: 32px;
-  margin-bottom: 64px;
+  /* 8px + the dots' own 4px padding either side = the 16px gap the design
+     draws between the visible pills. */
+  gap: 8px;
+  margin-top: 28px; /* 32 less the dots' 4px top padding */
+  margin-bottom: 60px; /* 64 less the dots' 4px bottom padding */
 }
 
+/* 16px of visual, 24px of target. `background-clip: content-box` keeps the
+   paint inside the content box, so the 4px padding is invisible but clickable
+   — 24×24 is the WCAG 2.2 AA minimum (2.5.8). The gap below is reduced by the
+   same 8px the padding adds, so the row's rhythm is unchanged. */
 .carousel__dot {
+  box-sizing: content-box;
   width: 16px;
   height: 16px;
+  padding: 4px;
   border-radius: 360px;
   background: var(--color-gray-500);
+  background-clip: content-box;
   cursor: pointer;
   transition: width 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
@@ -3464,6 +3560,64 @@ button {
     rgba(0, 0, 0, 0) 100%
   );
   text-align: center;
+}
+
+/* Background-video pause control (WCAG 2.2.2). Deliberately quiet — bottom
+   right, over the darkest corner of the scrim — but a full 44x44 target and a
+   real focus ring. It sits ABOVE `.action-cta__overlay`, which is `inset: 0`
+   and would otherwise swallow the clicks. */
+.action-cta__playpause {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--color-white);
+  transition: background var(--duration-fast) ease;
+}
+
+.action-cta__playpause[hidden] {
+  display: none;
+}
+
+.action-cta__playpause:hover {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.action-cta__playpause:focus-visible {
+  outline: var(--nav-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Two bars (pause) that collapse into a triangle (play) when paused. Drawn in
+   CSS so the control carries no extra asset. */
+.action-cta__playpause-icon {
+  width: 14px;
+  height: 14px;
+  border-left: 4px solid currentColor;
+  border-right: 4px solid currentColor;
+}
+
+.action-cta__playpause.is-paused .action-cta__playpause-icon {
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 0;
+  border-left: 12px solid currentColor;
+  margin-left: 3px; /* optical centring — a triangle reads left-heavy */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-cta__playpause {
+    transition: none;
+  }
 }
 
 .action-cta__title {
@@ -4595,7 +4749,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .utility-bar__link,
   .utility-bar__cta,
-  .main-nav__item > a,
+  .main-nav__item > :is(a, button),
   .main-nav__mobile-links a,
   .main-nav__menu-btn,
   .main-nav__logo,
@@ -4606,7 +4760,7 @@ button {
 
   .utility-bar__link:active,
   .utility-bar__cta:active,
-  .main-nav__item > a:active,
+  .main-nav__item > :is(a, button):active,
   .main-nav__mobile-links a:active,
   .main-nav__menu-btn:active,
   .main-nav__logo:active,
