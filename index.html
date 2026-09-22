@@ -434,9 +434,22 @@
           <form class="hero__rfi rfi" id="rfi-form" novalidate>
             <div class="rfi__head">
               <h2 class="rfi__title">Request program information</h2>
+              <!-- The labels are buttons, not text: they navigate. `type=button`
+                   is load-bearing — the default inside a <form> is `submit`, so
+                   without it clicking STEP 2 would post the form. The <li> is
+                   just the list semantics; the class, the data attribute and
+                   aria-current all live on the control, which is what a screen
+                   reader lands on. Going forward is gated exactly like the
+                   "Learn program details" button — see initHeroRfi(). -->
               <ol class="rfi__stepper">
-                <li class="rfi__step rfi__step--current" data-rfi-step="1">STEP 1</li>
-                <li class="rfi__step" data-rfi-step="2">STEP 2</li>
+                <li>
+                  <button type="button" class="rfi__step rfi__step--current" data-rfi-step="1">
+                    STEP 1
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="rfi__step" data-rfi-step="2">STEP 2</button>
+                </li>
               </ol>
             </div>
 

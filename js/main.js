@@ -212,6 +212,7 @@ function initHeroRfi() {
   const form = document.getElementById('rfi-form');
   if (!form) return;
 
+  const hero = form.closest('.hero');
   const panels = [...form.querySelectorAll('[data-rfi-panel]')];
   const steps = [...form.querySelectorAll('[data-rfi-step]')];
   const next = form.querySelector('[data-rfi-next]');
@@ -316,68 +317,181 @@ function initHeroRfi() {
     return complete;
   }
 
-  // --- keep the hero a constant height ------------------------------------
-  // The photo is `object-fit: cover`, so its crop is a function of the
-  // CONTAINER'S ASPECT. The hero grows past its height cap whenever the form
-  // needs more room, which means every step change and every conditional reveal
-  // was re-cropping the photo: at 1280x800 the hero swung 672 -> 783px and the
-  // visible slice of the image slid 321 source px sideways as you filled the
-  // form in. The subject visibly jumped.
+  // --- the hero hugs the form, and glides between sizes --------------------
+  // This replaces the old reservation, which pinned BOTH panels to the tallest
+  // state's height so the hero never resized. That held the photo still, but it
+  // made step 1 pay for step 2 everywhere: at 1280x800 the hero sat at 783px in
+  // every state when step 1 needs 672 — 111px of dark, empty panel, pushed
+  // below the fold, on the step most people never leave. At 900x800 it was
+  // 1035 against a needed 672, which is 363px.
   //
-  // Fix: reserve the height of the TALLEST state up front — both panels with
-  // every conditional revealed — and pin both panels to it. The hero's height
-  // then depends only on the viewport, never on form state, so the photo holds
-  // still. It also stops the buttons moving under the cursor on a step change.
-  // Reserving is closer to the design anyway: Figma's hero is a fixed height.
-  // Desktop only. Below 769px the photo is a FIXED 568px band whose crop does
-  // not depend on the form at all (verified: zero drift across every state), so
-  // reserving there buys nothing and costs a lot — the tallest state is ~911px,
-  // which would leave step 1 with hundreds of px of empty dark panel.
-  const RESERVE_AT = window.matchMedia('(min-width: 769px)');
+  // So the hero is now left to hug whatever the current state actually needs.
+  // That brings back the thing the reservation was there to prevent — the photo
+  // is `object-fit: cover`, so its crop is a function of the container's
+  // aspect, and a hero that resizes re-crops it (§5c measured the subject
+  // sliding 321 source px at 1280x800). The answer here is not to freeze the
+  // height but to ANIMATE it: settleHeroHeight() eases the hero from its old
+  // height to its new one, so the re-crop plays out as a slow push rather than
+  // a jump cut. The subject still moves; she just moves at 450ms instead of in
+  // a single frame.
+  //
+  // ⚠️ The alternative — pinning the photo's own box to the tallest state so
+  // the crop can't change at all, and letting the hero clip it — was tried and
+  // rejected. It holds the subject perfectly still, but it frames every short
+  // state for a tall one: at 900x800 step 1 rendered the top two-thirds of a
+  // 1035px-tall crop, which turns the composition into a headshot. Constant
+  // framing is not worth the wrong framing.
 
-  function reservePanelHeight() {
-    if (!RESERVE_AT.matches) {
-      panels.forEach((p) => {
-        p.style.minHeight = '';
-      });
-      return;
-    }
-    const conds = [
-      ...form.querySelectorAll(
-        '[data-rfi-followups],[data-rfi-rn],[data-rfi-formats],[data-rfi-benefits],[data-rfi-disqualifier]'
-      ),
-    ];
-    const panelWasHidden = panels.map((p) => p.hidden);
-    const condWasHidden = conds.map((c) => c.hidden);
+  // Animate the hero from the height it is currently rendered at to the height
+  // its new content wants. The height is only pinned for the length of the
+  // transition — at rest the hero is back to `auto` under its CSS min-height,
+  // so nothing here can go stale against a resize or a font swap.
+  let settleFallback = null;
+  let heightBefore = null;
 
-    // Measure the worst case: no reservation in place, everything revealed.
-    panels.forEach((p) => {
-      p.style.minHeight = '';
-    });
-    conds.forEach((c) => {
-      c.hidden = false;
-    });
-
-    let tallest = 0;
-    panels.forEach((p) => {
-      p.hidden = false;
-      tallest = Math.max(tallest, p.offsetHeight);
-      p.hidden = true;
-    });
-
-    // Restore, then pin. All synchronous, so nothing is painted mid-measure.
-    panels.forEach((p, i) => {
-      p.hidden = panelWasHidden[i];
-    });
-    conds.forEach((c, i) => {
-      c.hidden = condWasHidden[i];
-    });
-    panels.forEach((p) => {
-      p.style.minHeight = `${tallest}px`;
-    });
+  // ⚠️ The outgoing height has to be sampled BEFORE the DOM changes, and every
+  // caller of settleHeroHeight() runs *after* it: showStep() has already
+  // swapped the panels, and the delegated `change` listener is by definition
+  // downstream of the handlers that open and close the conditionals. Sampling
+  // inside settleHeroHeight() therefore reads the new height as the old one,
+  // `from === to`, and the transition silently never runs (it didn't, first
+  // time round). These two listeners are on the CAPTURE phase, so they fire
+  // ahead of the control's own handlers and catch the pre-change height.
+  function markHeroHeight() {
+    heightBefore = hero ? hero.offsetHeight : null;
   }
 
-  function showStep(step) {
+  form.addEventListener('change', markHeroHeight, true);
+  form.addEventListener('click', markHeroHeight, true);
+
+  function releaseHeroHeight() {
+    window.clearTimeout(settleFallback);
+    heightBefore = null;
+    if (!hero) return;
+    hero.style.height = '';
+    hero.classList.remove('is-resizing');
+    syncPhotoFade();
+  }
+
+  function settleHeroHeight(animate) {
+    if (!hero) return;
+    // Mid-transition this is the animated value, which is the right thing to
+    // ease from when a second change interrupts the first.
+    const from = heightBefore ?? hero.offsetHeight;
+    heightBefore = null;
+    // Read the target with the lock off, so `to` is the real laid-out height.
+    hero.style.height = '';
+    const to = hero.offsetHeight;
+    if (!animate || prefersReducedMotion || to === from) {
+      releaseHeroHeight();
+      return;
+    }
+    // Mobile has no `overflow: hidden` (the form panel sits below the photo
+    // band in normal flow), so while the hero is mid-shrink the content that no
+    // longer fits would spill over the section below. Clip for the duration.
+    hero.classList.add('is-resizing');
+    hero.style.height = `${from}px`;
+    void hero.offsetHeight; // force the start frame, or there's nothing to ease from
+    hero.style.height = `${to}px`;
+    // Turn the fade ON eagerly against the TARGET height, so a hero growing
+    // past the photo doesn't show a hard edge for the length of the
+    // transition. Only ever added here — removing it mid-shrink would expose
+    // the same edge on the way back. releaseHeroHeight() does the full sync.
+    if (FADE_AT.matches && heroPhoto && heroPhoto.offsetHeight < to - 1) {
+      hero.classList.add('hero--photo-short');
+    }
+    // transitionend is the real release; this only covers the case where the
+    // transition never fires (interrupted, tab backgrounded, height clamped).
+    window.clearTimeout(settleFallback);
+    settleFallback = window.setTimeout(releaseHeroHeight, 1000);
+  }
+
+  hero?.addEventListener('transitionend', (event) => {
+    if (event.target !== hero || event.propertyName !== 'height') return;
+    releaseHeroHeight();
+  });
+
+  // The photo is pinned to the hero's height CAP, not to the hero (see
+  // `.hero__bg-image`), so once the form pushes the hero past that cap the
+  // photo stops short of the hero's bottom edge. Flag that state; CSS fades
+  // the photo's last 120px into the wall red for it, because a hard horizontal
+  // edge across her skirt reads as a rendering fault. Checked against the
+  // rendered boxes rather than recomputing the cap, so it can't drift from
+  // whatever the CSS actually resolved.
+  const heroPhoto = hero?.querySelector('.hero__bg-image');
+  // Below 769 the photo is a fixed 568px band with the form stacked underneath
+  // in flow, so it is ALWAYS shorter than the hero and the comparison below
+  // would be permanently true. The fade is desktop-only in CSS; keep the class
+  // desktop-only too rather than leaving a lie in the DOM on mobile.
+  const FADE_AT = window.matchMedia('(min-width: 769px)');
+
+  function syncPhotoFade() {
+    if (!hero || !heroPhoto) return;
+    // 1px of slack: at rest the cap and the hero's height are the same computed
+    // value, and sub-pixel rounding can make the photo look short.
+    const short = FADE_AT.matches && heroPhoto.offsetHeight < hero.offsetHeight - 1;
+    hero.classList.toggle('hero--photo-short', short);
+  }
+
+  // --- keep the copy clear of her face -------------------------------------
+  // Her face is a fixed slice of the source frame: x 0.7312–0.8211 of
+  // hero-rfi-desktop.webp, measured by sampling skin pixels off the asset and
+  // taking the TOPMOST contiguous run. (A plain column histogram picks out her
+  // neck and chest instead — they carry far more skin — which reads ~3%
+  // further right and licenses copy that does overlap her face. That mistake
+  // shipped once.)
+  //
+  // This is MEASURED rather than expressed as a vw formula because the crop
+  // depends on the hero's height cap as well as its width, and that cap is
+  // `100svh`-derived — so her face moves with the window's HEIGHT too. A 1440
+  // window 900 tall and a 1440 window 1919 tall put her 60px apart, and no
+  // width-only rule can track both.
+  //
+  // It can only be measured safely because the photo is pinned to the viewport
+  // cap (see `.hero__bg-image`): the crop no longer depends on how tall the
+  // content is, so the cap this derives can't feed back into its own input.
+  const heroContent = hero?.querySelector('.hero__content');
+  const FACE_LEFT_FRAC = 0.7312;
+  const FACE_GUTTER = 24; // breathing room between the longest line and her face
+
+  function fitHeroCopy() {
+    if (!hero || !heroPhoto || !heroContent) return;
+    if (!FADE_AT.matches || !heroPhoto.naturalWidth) {
+      // Mobile stacks the copy under the photo band — nothing to clear. The
+      // CSS fallback covers the pre-decode and no-JS cases.
+      hero.style.removeProperty('--hero-copy-max');
+      return;
+    }
+    const lw = heroPhoto.offsetWidth;
+    const lh = heroPhoto.offsetHeight;
+    const cover = Math.max(lw / heroPhoto.naturalWidth, lh / heroPhoto.naturalHeight);
+    const drawnW = heroPhoto.naturalWidth * cover;
+    // `object-position: right top` pins the right edge, so the overflow hangs
+    // off the left.
+    const faceInBox = lw - drawnW + FACE_LEFT_FRAC * drawnW;
+    // ⚠️ The box's UNtransformed left edge. `.hero__bg-photo` carries a
+    // `scale()` for the parallax's travel room, so getBoundingClientRect()
+    // returns the scaled box and would overstate the room by lw*(scale-1)/2 —
+    // 36px at 1440. The photo is `inset: 0` inside a background that is
+    // `inset: 0` inside the hero, so the hero's own left edge is the right
+    // reference. The parallax itself uses `translate` and moves her vertically,
+    // so it can't affect this.
+    // `none` under prefers-reduced-motion. Chrome's DOMMatrix happens to
+    // accept that string and hand back an identity matrix; the spec wants a
+    // <transform-list>, so don't rely on it.
+    const transform = getComputedStyle(heroPhoto).transform;
+    const scale = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).a || 1 : 1;
+    const faceX = hero.getBoundingClientRect().left + lw / 2 + (faceInBox - lw / 2) * scale;
+
+    const room = faceX - heroContent.getBoundingClientRect().left - FACE_GUTTER;
+    // Never cap below the longest unbreakable word, or the headline overflows
+    // its box and lands on her anyway — clipped, which looks worse than tight.
+    const words = [...hero.querySelectorAll('.hero__title .word')];
+    const widest = words.length ? Math.max(...words.map((w) => Math.ceil(w.getBoundingClientRect().width))) : 0;
+    hero.style.setProperty('--hero-copy-max', `${Math.max(Math.floor(room), widest)}px`);
+  }
+
+  function showStep(step, animate = false) {
     panels.forEach((panel) => {
       panel.hidden = panel.dataset.rfiPanel !== String(step);
     });
@@ -388,10 +502,11 @@ function initHeroRfi() {
       if (isCurrent) item.setAttribute('aria-current', 'step');
       else item.removeAttribute('aria-current');
     });
+    settleHeroHeight(animate);
     // The finder's parallax cap depends on where the action buttons sit inside
-    // the hero, and a step change moves them (step 2 stacks more above them)
-    // WITHOUT changing the hero's height — reservePanelHeight() pins that. So a
-    // ResizeObserver cannot see this; it needs telling. See measureFinderRoom().
+    // the hero, and a step change moves them (step 2 stacks more above them).
+    // measureFinderRoom() recomputes every frame anyway, but it only runs while
+    // something is animating the page, so tell it. See measureFinderRoom().
     form.dispatchEvent(new CustomEvent('rfi:stepchange', { detail: { step } }));
   }
 
@@ -512,7 +627,12 @@ function initHeroRfi() {
   // preventScroll on every step focus: the panels are different heights, so a
   // default focus() scrolls the page to chase the field and drags the headline
   // off screen — you'd land on step 2 with the hero's top half gone.
-  next?.addEventListener('click', () => {
+
+  // Forward is gated; backward never is. Both the action buttons and the
+  // stepper labels go through these two, so there is exactly one definition of
+  // what "advance" means — a second copy of the gate on the stepper is how you
+  // end up with a back door into step 2.
+  function goToStep2() {
     if (!step1Complete()) {
       const firstProblem =
         form.querySelector('.rfi-field--error .rfi-field__control') ||
@@ -520,15 +640,32 @@ function initHeroRfi() {
         form.querySelector('[data-rfi-rn]:not([hidden]) .rfi-radio__input') ||
         form.querySelector('[data-rfi-formats]:not([hidden]) .rfi-radio__input');
       firstProblem?.focus({ preventScroll: true });
-      return;
+      return false;
     }
-    showStep(2);
+    showStep(2, true);
     form.querySelector('#rfi-first')?.focus({ preventScroll: true });
-  });
+    return true;
+  }
 
-  back?.addEventListener('click', () => {
-    showStep(1);
+  function goToStep1() {
+    showStep(1, true);
     degreeSelect?.focus({ preventScroll: true });
+  }
+
+  next?.addEventListener('click', goToStep2);
+  back?.addEventListener('click', goToStep1);
+
+  // The stepper labels navigate. Clicking the step you're already on is a
+  // no-op rather than a re-entry: re-running goToStep2() from step 2 would
+  // re-validate a step you can't see and yank focus back to the first field.
+  steps.forEach((item) => {
+    item.addEventListener('click', () => {
+      const target = item.dataset.rfiStep;
+      const current = panels.find((panel) => !panel.hidden)?.dataset.rfiPanel;
+      if (target === current) return;
+      if (target === '2') goToStep2();
+      else goToStep1();
+    });
   });
 
   // No endpoint to post to in this prototype, so keep the page put and mark up
@@ -552,20 +689,46 @@ function initHeroRfi() {
     firstBad?.focus({ preventScroll: true });
   });
 
+  // Any change inside the form can open or close a conditional, which resizes
+  // the hero. One delegated listener covers all of them: `change` fires on the
+  // control first, so every handler above (syncChain / syncFollowups /
+  // syncBenefits) has already run by the time this bubbles up to the form.
+  form.addEventListener('change', () => settleHeroHeight(true));
+
   syncChain();
   syncFollowups();
   syncBenefits();
   showStep(1);
-  reservePanelHeight();
-  // Re-reserve on resize only — width changes how the copy wraps, so the
-  // tallest state changes too. Deliberately NOT driven off a ResizeObserver:
-  // this function mutates the very heights such an observer would watch.
-  let resizeTimer = null;
+  syncPhotoFade();
+  fitHeroCopy();
+
+  // Both depend on the photo, which may not have decoded yet, and on the
+  // webfonts — Typekit's acumin swap changes the headline's word widths, which
+  // is the floor fitHeroCopy() clamps to.
+  document.fonts?.ready.then(fitHeroCopy);
+  window.addEventListener(
+    'load',
+    () => {
+      syncPhotoFade();
+      fitHeroCopy();
+    },
+    { once: true }
+  );
+  heroPhoto?.addEventListener('load', fitHeroCopy);
+
+  // A resize relays the hero out from scratch, so drop any height left pinned
+  // by a transition the resize interrupted — otherwise the hero would hold a
+  // height measured at the old viewport width until the next step change.
+  // releaseHeroHeight() re-syncs the photo fade on the way through.
+  //
+  // ⚠️ The copy cap has to be recomputed on HEIGHT changes too, not just width:
+  // the photo is pinned to a `100svh`-derived cap, so a shorter or taller
+  // window re-crops it and moves her face sideways.
   window.addEventListener(
     'resize',
     () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(reservePanelHeight, 150);
+      releaseHeroHeight();
+      fitHeroCopy();
     },
     { passive: true }
   );

@@ -210,6 +210,39 @@ reduced-motion stills (`cta-people.png`, `cta-mobile.jpg`), ~6.7 MB, removed
 when the closing CTA went back to the single TV-spot clip. Recover from git
 history if that treatment ever returns.
 
+### 3e. The desktop photo is pinned to ONE scale
+
+`.hero__bg-image { height: var(--hero-cap) }` — the height the **viewport**
+allows, never the height the hero ends up at. `--hero-cap` is declared next to
+the hero's own `min-height` and is the same expression, so the two can't drift;
+the tablet block redefines it once, for both.
+
+This matters because `object-fit: cover` derives its crop from the box it is
+given. While the photo tracked the hero — which hugs the form (§5c) — every
+extra row of fields zoomed the photo in and walked her face left. Measured at
+1024: x 626 on step 1, x 543 on step 2, x 497 with the benefits question open,
+and the error states further still. That is what kept putting her back under
+the headline after the copy cap (§5) had just cleared it.
+
+Pinned, the crop is byte-identical in all seven form states, and it is exactly
+the design's crop whenever the hero sits at its cap. Her face is now at a fixed
+x for a given viewport, which is what makes the copy cap in §5 a guarantee
+rather than a step-1 approximation.
+
+⚠️ **The hero can now be taller than the photo, and the seam needs the fade.**
+`initHeroRfi()` toggles `.hero--photo-short` on the hero whenever the rendered
+photo is shorter than the rendered hero, and CSS dissolves the photo's last
+120px into `.hero__background`'s wall red for that state. Without it the photo
+ends in a hard horizontal cut across her skirt, which reads as a rendering
+fault rather than a treatment — that version was built, looked broken, and is
+why the fade exists. The class is added eagerly against the *target* height
+when the hero grows (so no hard edge shows for the 450ms of the transition) and
+only removed on the full re-sync in `releaseHeroHeight()`.
+
+⚠️ The mask is **conditional on purpose**. Applying it unconditionally would
+fade the bottom of the photo at 1440 and 1920 too, where the hero never
+overflows its cap and the composition is correct as-is.
+
 ---
 
 ## 4. Responsive breakpoints
@@ -223,9 +256,12 @@ Mobile-first base styles, with these override breakpoints (see `styles.css`):
 | `max-width: 1023px` | **Phone/tablet carousel layout** (fixed `294 × 583` aspect card, absolutely-positioned elements scaled via container query) |
 | `max-width: 1024px` | Tablet: hamburger nav, **program-finder top is the row layout** (title beside 2×2 chips) |
 | `min-width: 769px` | **The hero's own breakpoint** — deliberately 769, not 768, so it lines up exactly with the `(max-width: 768px)` query on the `<picture>` mobile source. Switches the hero from the mobile stack (photo band + solid dark form panel) to the desktop overlay (full-bleed photo, transparent form, row-layout stepper and fields) |
-| `min-width: 769px and max-width: 1199px` | **Tablet hero**: capped at `--hero-height-tablet-max` (760px), and step 2's five text inputs wrap to a 2-up grid — in one row they'd be ~150px each |
+| `min-width: 769px and max-width: 1199px` | **Tablet hero**: capped at `--hero-height-tablet-max` (760px) via `--hero-cap`, which also re-points the photo's pinned height (§3e). Step **1**'s paired follow-ups stack here; step 2 no longer does — see the next row |
+| `min-width: 769px and max-width: 999px` | Step 2's five text inputs wrap to a 2-up grid, and its question pair stacks. **Above this, step 2 keeps the 1440 layout**: five inputs in one row (~152px at 1000, ~156px at 1024, ~187px at 1199) and the questions laid out by the desktop rules. Deliberate — it is what keeps the hero at its cap on step 2. Below 1000 five columns would be ~110px, too narrow for "Email address" |
+| `min-width: 769px and max-width: 999px` | Hero headline ramps 56px → 100px (§5); step 2's fields and questions stack (see below) |
+| `min-width: 1000px` | **One-off, and the only reason it exists:** the step-2 military-benefits question stops wrapping (`white-space: nowrap` on its legend). Its sentence measures 806px and the form is narrower than that below ~920 — and because the desktop hero is `overflow: hidden`, a nowrap line that doesn't fit is *clipped*, not scrolled. Don't widen this rule down to the 769px hero breakpoint |
 | `min-width: 1024px` | **Wide carousel layout** (`1440 × 600` card; the faculty portrait and the phone overflow above the card top) |
-| `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, etc. (the hero's sizing is owned by its own 769px+ block, not this one) |
+| `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, and the step-2 question row gaining `flex-wrap` so the benefits question can take a line of its own when it won't fit beside the military one (it shares the row from 1920). The hero's sizing is owned by its own 769px+ block, not this one |
 | `max-width: 1280px` / `min-width: 1920px` | `--page-gutter` adjustments only (in `tokens.css`) |
 
 ⚠️ **The 1023 / 1024 boundary is load-bearing for the carousel.** The phone and
@@ -447,6 +483,13 @@ is the case with structure:
   tablet block swaps the cap for `--hero-height-tablet-max` (760px). Uses `svh`
   so mobile browser chrome doesn't break it.
 
+It is `min-height`, not `height`, at both breakpoints, so **the hero grows past
+the cap in whatever state needs it** and shrinks back — at 1920×1080 the cap
+wins in every state and the hero is a flat 912px, but at 1280×800 it runs
+672 → 783 and at 900×800 it runs 672 → 1035. That resize is animated; see §5c,
+which also covers what it costs (the photo re-crops) and why that was the trade
+chosen.
+
 ⚠️ **The reserve no longer accounts for the program finder.** It used to: the
 hero was sized to keep the finder above the fold. The RFI form is now *in* the
 hero, so the form is the thing that has to be reachable, and capping the hero at
@@ -456,6 +499,63 @@ values — that shrinks the hero and squeezes the form.
 The hero content is **top-anchored and left-aligned** in the same
 `min(--max-content, 100% - 2*--page-gutter)` measure `.page-container` gives the
 rest of the page, which is what puts it at Figma's `x=240` on a 1920 frame.
+
+### The copy is capped so it can't run over her face
+
+`.hero__content { max-width: min(839px, var(--hero-copy-max, calc(62vw - 300px))) }`
+in the `769px+` block. `--hero-copy-max` is **measured** by `fitHeroCopy()` in
+`initHeroRfi()`; the `calc()` is only the no-JS / pre-decode fallback, and is
+deliberately the more conservative of the two.
+
+Her face is a fixed slice of the source frame — **x 0.7312–0.8211** of
+`hero-rfi-desktop.webp`. The photo is `cover` anchored `right top`, so it is
+height-bound at every desktop size and the crop scales with the hero's height
+cap: the taller the cap, the more zoomed she is and the further LEFT her face
+sits. `fitHeroCopy()` reproduces that cover maths against the live element and
+sets the cap to `faceX − contentLeft − 24`.
+
+⚠️ **Why this is measured and not a `vw` formula.** The crop depends on the
+height cap as well as the width, and that cap is `100svh`-derived — so her face
+moves with the window's **height** too. At 1440 wide she is at x 1018 in a
+900-tall window and x 935 in a 1919-tall one. A width-only rule cannot track
+both, and the `vw` formula that used to live here passed every test at 900 and
+then put the headline across her face on a tall 1440 window. Recompute on
+resize for height changes, not just width ones.
+
+⚠️ **Two measurement traps, both of which shipped once:**
+
+1. **Sampling skin with a plain column histogram finds her neck and chest, not
+   her face.** They carry far more skin, so they dominate the column counts and
+   report x 0.763–0.817 — about 3% too far right, which licenses copy that does
+   overlap. Take the *topmost contiguous* run of skin rows instead.
+2. **`getBoundingClientRect()` on the photo returns the SCALED box.**
+   `.hero__bg-photo` carries `transform: scale(1.05)` for the parallax's travel
+   room, so using its `left` as the crop origin overstates the room by
+   `width × (scale−1) / 2` — 36px at 1440. Use the hero's own left edge (the
+   photo is `inset: 0` inside a background that is `inset: 0` inside it) and
+   apply the scale explicitly. The parallax's own movement is a `translate` and
+   is vertical, so it cannot affect this.
+
+A second rule ramps `.hero__title` from 56px at 769 to 100px at 1000, meeting
+`.display-xl`'s own ceiling exactly at 1000 so there is no step at the
+boundary. It exists because the cap used to feed back on itself: a narrower
+column wrapped the 100px headline to three lines, three lines made the hero
+taller, a taller hero zoomed the photo further, and her face moved back under
+the headline. (Pinning the photo — §3e — broke that loop for good, but the ramp
+still earns its place: 100px in a 299px column is four lines of hero.)
+
+**The cap holds in every form state by construction.** The photo is pinned
+(§3e) so the crop is state-independent, and the copy's width and position are
+state-independent too — therefore if it clears in one state it clears in all
+of them. What remains variable is the viewport.
+
+**Validated** analytically across 96 width × height combinations (769–2560 by
+640–2400): the derived cap is never forced below the longest unbreakable word,
+so the 24px gutter always holds — the tightest case, 769 wide, still has 125px
+of slack. Spot-checked against the live page with the full seven-state walk at
+1440×1919, 1440×900, 1024×1919, 769×700 and 2560×1440: measured gap 24–25px
+wherever the cap binds, and 502px at 2560 where the design's own 839px measure
+takes over.
 
 The photo takes a **different `object-position` per breakpoint** (`center top`
 on mobile, `right top` on desktop) because the subject is off-centre in both
@@ -656,29 +756,61 @@ the kit loads.
 
 ---
 
-### 5c. The hero's height is reserved so the photo can't move
+### 5c. The hero hugs the form, and animates between sizes
 
-`reservePanelHeight()` in `initHeroRfi()` measures **both panels with every
-conditional revealed**, takes the taller, and pins both to it with `min-height`.
+`settleHeroHeight()` in `initHeroRfi()` eases the hero from the height it is
+currently rendered at to the height its new content wants, then hands the height
+back to CSS. At rest the hero has **no inline height** — it is `auto` under the
+`min-height` cap from §5 — so there is nothing here that can go stale.
 
-This is not cosmetic. The photo is `object-fit: cover`, so its crop is a function
-of the **container's aspect** — and the hero grows past its height cap whenever
-the form needs more room. That made every step change and every conditional
-reveal re-crop the photo: at 1280×800 the hero swung **672 → 783px** and the
-visible slice of the image slid **321 source px sideways** as the form was filled
-in. The subject visibly jumped. With the reservation the hero's height depends
-only on the viewport, so the crop is byte-identical in all six states (step 1
-bare / with follow-ups / with the disqualifier, step 2, step 2 + benefits, and
-back again — verified). It also stops the buttons moving under the cursor on a
-step change, and it is closer to the design, whose hero is a fixed height.
+**This replaced a height reservation, and the trade is deliberate.** The photo is
+`object-fit: cover`, so its crop is a function of the **container's aspect**, and
+a hero that resizes re-crops it: at 1280×800 the hero swings **672 → 783px** and
+the visible slice of the image slides **321 source px sideways** as the form is
+filled in. The old fix (`reservePanelHeight()`) measured both panels with every
+conditional revealed and pinned both to the taller, so the hero's height depended
+only on the viewport and the photo never moved.
 
-⚠️ **Desktop only** (`min-width: 769px`). Below that the photo is a fixed 568px
-band whose crop already doesn't depend on the form at all, so reserving buys
-nothing there and costs a lot — the tallest state is ~911px, which would leave
-step 1 with hundreds of px of empty dark panel.
+That worked, but step 1 paid step 2's bill at every viewport where the tallest
+state exceeds the cap:
 
-⚠️ It runs on **init and resize only**, never from a `ResizeObserver` — it
-mutates the very heights such an observer would be watching.
+| viewport | step 1 needs | reservation forced | wasted |
+| --- | --- | --- | --- |
+| 1280×800 | 672px | 783px | 111px |
+| 900×800 (tablet band) | 672px | 1035px | **363px** |
+| 1920×1080 | 912px (the cap) | 912px | 0 — the cap dominates, nothing changed here |
+
+All of it dark, empty panel below the fold, on the step most people never leave.
+So the hero now hugs, and the re-crop is **absorbed by the transition** instead of
+being designed out: 450ms of `--ease-out-expo` on `height` turns the subject's
+slide into a slow push rather than a jump cut. She still moves. She moves over
+450ms instead of in one frame.
+
+⚠️ **The photo does not follow the hero — see §3e.** It is pinned to the
+viewport cap, so the re-crop described above no longer happens and her face
+stays put in every form state. An earlier attempt pinned it to the *tallest
+form state* instead; don't go back to that one. It holds the crop still too,
+but it frames every short state for a tall one — at 900×800 step 1 then renders
+the top two-thirds of a 1035px crop, which turns the composition into a
+headshot. Constant framing is not worth the wrong framing.
+
+⚠️ **The outgoing height must be sampled before the DOM changes.** Every caller
+of `settleHeroHeight()` runs *after* the mutation — `showStep()` has already
+swapped the panels, and the delegated `change` listener is by definition
+downstream of the handlers that open and close the conditionals. Sampling inside
+`settleHeroHeight()` reads the new height as the old one, `from === to`, and the
+transition silently never runs. Two **capture-phase** listeners (`markHeroHeight`)
+take the reading ahead of the control's own handlers instead.
+
+⚠️ **`transitionend` is the release; the 1000ms timer is only a backstop.** It
+covers the cases where the transition never fires at all — an interrupted
+transition, a backgrounded tab (a hidden tab doesn't tick CSS transitions, which
+is worth knowing if you are testing this through a headless browser).
+
+`.hero.is-resizing` adds `overflow: hidden` for the length of the transition.
+Desktop already clips; **mobile does not** (the form panel sits below the photo
+band in normal flow), and mid-shrink the part of the form that no longer fits
+would hang over the section below.
 
 ### 5d. The three step-1 dropdowns are a gated chain
 
@@ -703,6 +835,33 @@ degree  ──enables──▶  area of study  ──enables──▶  specialis
   user can't use and bury the field that actually needs them. The gate now walks
   them forward one field at a time (verified: degree → area → specialisation,
   focus following each).
+
+### 5e. The stepper navigates
+
+`STEP 1` / `STEP 2` are `<button type="button">` inside the `<ol>`'s list items,
+not inert labels. The `type` is load-bearing: the default for a button inside a
+`<form>` is `submit`, so without it clicking `STEP 2` would submit the RFI.
+
+- **Forward is gated, backward is not.** The stepper and the action buttons both
+  call `goToStep2()` / `goToStep1()`, so there is one definition of what
+  "advance" means. Clicking `STEP 2` with step 1 unfinished does exactly what
+  "Learn program details" does — flags the offending field and focuses it,
+  without moving. Don't give the stepper its own copy of the gate; that is how
+  you get a back door into step 2.
+- **Clicking the step you are already on is a no-op.** Re-entering `goToStep2()`
+  from step 2 would re-validate a step that isn't on screen and yank focus back
+  to the first field.
+- The class, `data-rfi-step` and `aria-current` all live on the **button**, not
+  the `<li>` — the control is what a screen reader lands on. `showStep()` keys
+  off `[data-rfi-step]`, so it picks the buttons up unchanged.
+- The button fills its column (`.rfi__stepper > li` is the flex item now), so
+  the whole half of the stepper is the hit area rather than the six characters
+  of the label. That is 235×42 on desktop and 173×42 on mobile.
+- Hover brightens the rule to 70% white, short of the full white the current
+  step owns — hovered must never read as "you are here", because that contrast
+  *is* the progress indicator. The current step keeps `cursor: default` but
+  stays focusable, so the stepper doesn't develop a hole in the tab order as you
+  move between steps.
 
 ---
 
@@ -810,7 +969,7 @@ All live in `main.js`, initialized on `DOMContentLoaded`. Every one is
 | `initParallax()` | Translates the content-band background image on scroll for depth. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
 | `initHeroParallax()` | The ONLY motion on the hero photo (a 13s ambient Ken Burns zoom/pan was removed — it read as the wall moving on its own). The hero is one frame now, so the **whole photo** (`.hero__bg-photo`) drifts together. Driven off `window.scrollY` so it responds from the first scroll pixel; drifts it down up to 12px. Overshoot comes only from the CSS `scale(1.05)` — see §3a before changing either number. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
 | `initContentParallax()` | Floats `.program-finder` (factor 0.2) up as you scroll, **capped so it can never cover the hero form** (§7a). **Driven off `window.scrollY`, NOT off each element's `getBoundingClientRect().top`** — a viewport-relative formula is already non-zero for anything on screen at load, which shoved the hero headline ~100px above its laid-out position. Must read 0 at `scrollY === 0`. ⚠️ **It deliberately skips `.hero__content` whenever `.hero__rfi` is present** (i.e. always, now): the copy would slide up away from a form that stays put, opening a growing gap between a heading and the fields it introduces. The form itself is excluded from every parallax on purpose — drifting selects and inputs are miserable to use. The old `heroContent` branch and its `offsetTop - 16` clip cap are still in the function for whenever the hero goes back to being purely decorative. | `scroll`/`resize`, throttled with `requestAnimationFrame`; plus a `ResizeObserver` for the cap |
-| `initHeroRfi()` | The hero RFI's step 1 ⇄ step 2 swap (toggles `hidden` on `[data-rfi-panel]`, syncs `.rfi__step--current` + `aria-current` on the stepper); the **gated degree → area → specialisation chain** (§5d), whose options read the **same `SPECIALIZATIONS` map the program finder uses** so the two can't drift apart; the **conditional step-1 follow-ups** and the military-benefits follow-up (§5a); **per-field error / success / disabled states** (§5b); and the **height reservation** that keeps the photo still (§5c). Step 1 gates itself rather than calling `reportValidity()`, because the form is `novalidate` (so "Learn program details" — a next, not a submit — doesn't fire browser bubbles); the gate covers the three selects, any *visible* radio group, and the nursing dead end. Every step change focuses with `{ preventScroll: true }`: the panels are different heights, so a plain `focus()` scrolls the page to chase the field and drags the headline off screen. | direct listeners on the next/back/submit buttons, plus `change` on the selects/radios and `blur`/`input` on the text fields |
+| `initHeroRfi()` | The hero RFI's step 1 ⇄ step 2 swap (toggles `hidden` on `[data-rfi-panel]`, syncs `.rfi__step--current` + `aria-current` on the stepper, whose labels are **buttons that navigate** — §5e); the **gated degree → area → specialisation chain** (§5d), whose options read the **same `SPECIALIZATIONS` map the program finder uses** so the two can't drift apart; the **conditional step-1 follow-ups** and the military-benefits follow-up (§5a); **per-field error / success / disabled states** (§5b); and the **animated hero resize** that lets the section hug the current step (§5c). Step 1 gates itself rather than calling `reportValidity()`, because the form is `novalidate` (so "Learn program details" — a next, not a submit — doesn't fire browser bubbles); the gate covers the three selects, any *visible* radio group, and the nursing dead end. Every step change focuses with `{ preventScroll: true }`: the panels are different heights, so a plain `focus()` scrolls the page to chase the field and drags the headline off screen. | direct listeners on the next/back/submit buttons, plus `change` on the selects/radios and `blur`/`input` on the text fields |
 | Card hover scale | CSS-only `transform: scale(1.02)` on `.stats-section__program:hover` (replaced the removed VanillaTilt 3D tilt — it caused a "jiggle"). Kept deliberately, on top of the card's white hover fill. Disabled under reduced-motion. | hover |
 
 > **Removed:** `initTilt()` / VanillaTilt. The cursor-following 3D tilt on the
@@ -892,12 +1051,17 @@ Two attempts at caching it both shipped stale values:
 
 1. A step-change hook fired *before* the conditional reveals had reflowed — 6px
    stale, eating a third of the gutter.
-2. A `ResizeObserver` on the hero and form fixed that, but then
-   `reservePanelHeight()` (§5c) pinned the hero to a constant height — so
+2. A `ResizeObserver` on the hero and form fixed that, but then the height
+   reservation §5c used to carry pinned the hero to a constant height — so
    stepping 1 → 2 moved the buttons down inside it while **nothing changed
    size**. The observer is blind to that, and the finder covered the step-2
    buttons by 56px. Revealing the benefits question did the same thing inside a
    pinned panel, for another 8px.
+
+   The reservation is gone (§5c) and the hero resizes again, so an observer
+   *would* see a step change now — but it would see it once per animation
+   frame for the length of the height transition, which is strictly worse than
+   the per-frame recompute below. Leave it uncached.
 
 Enumerating the triggers is a losing game, so the value is simply recomputed
 each frame. The reads are `offsetTop`/`offsetHeight` on three elements and they
@@ -1006,7 +1170,7 @@ browsers:
 | Which part of the photo stays in frame | `object-position` on `.hero__bg-image` (`center top`) and its `769px+` override (`right top`) — §3a. Centring it crops her face off at several common widths |
 | Hero RFI copy, fields, or step behaviour | `index.html` `.hero__rfi` (markup), `.rfi*` / `.rfi-field*` / `.rfi-radio*` blocks in `css/styles.css`, `initHeroRfi()` in `js/main.js`. The specialization options come from `SPECIALIZATIONS` at the top of `main.js` — shared with the program finder |
 | Re-export the hero photo | crop the two boxes in §3a out of the source and save as WebP; the layer classes `.hero__bg-red` / `.hero__bg-people` are **gone** — there is one `.hero__bg-photo` now |
-| Hero form height reservation (empty space under step 1) | `reservePanelHeight()` in `initHeroRfi()` — it pins both panels to the tallest state so the photo's crop can't shift between steps (§5c) |
+| Hero growing / shrinking between steps, and the speed of it | `settleHeroHeight()` in `initHeroRfi()` drives it; the duration and curve are the `transition` on `.hero` (§5c). The hero hugs the current state — an earlier build reserved the tallest state's height instead, and §5c says why that was dropped |
 | Program finder riding over the hero buttons | `measureFinderRoom()` in `initContentParallax()` — the drift is capped on the form's clearance, recomputed every frame (§7a) |
 | The degree / area / specialisation gating | `syncChain()` in `initHeroRfi()` (§5d); the disabled look is `.rfi-field--disabled` in `css/styles.css` |
 | A dropdown's caret position | `.rfi-field__caret` + `.rfi-field__box--select` in `css/styles.css` — it is an element centred in the box, **not** a background image on the select (§5b) |
