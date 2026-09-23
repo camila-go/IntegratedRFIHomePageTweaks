@@ -251,10 +251,10 @@ Mobile-first base styles, with these override breakpoints (see `styles.css`):
 
 | Breakpoint | Purpose |
 | --- | --- |
-| `max-width: 768px` | Mobile layout: stacked nav + mobile header, sticky utility bar, mobile type sizes, mobile carousel coordinates, **program-finder top stacks (title above chips)** |
-| `max-width: 640px` | Phone: program-finder chips become a **2×2 grid** (`minmax(0,1fr) minmax(0,1fr)` — plain `1fr` won't shrink below the chips' content width and overflows; reduced chip `padding-inline` so labels fit), stats grid single-column |
+| `max-width: 768px` | Mobile layout: stacked nav + mobile header, sticky utility bar, mobile type sizes, mobile carousel coordinates |
+| `max-width: 640px` | Phone: stats grid single-column |
 | `max-width: 1023px` | **Phone/tablet carousel layout** (fixed `294 × 583` aspect card, absolutely-positioned elements scaled via container query) |
-| `max-width: 1024px` | Tablet: hamburger nav, **program-finder top is the row layout** (title beside 2×2 chips) |
+| `max-width: 1024px` | Tablet: hamburger nav |
 | `min-width: 769px` | **The hero's own breakpoint** — deliberately 769, not 768, so it lines up exactly with the `(max-width: 768px)` query on the `<picture>` mobile source. Switches the hero from the mobile stack (photo band + solid dark form panel) to the desktop overlay (full-bleed photo, transparent form, row-layout stepper and fields) |
 | `min-width: 769px and max-width: 1199px` | **Tablet hero**: capped at `--hero-height-tablet-max` (760px) via `--hero-cap`, which also re-points the photo's pinned height (§3e). Step **1**'s paired follow-ups stack here; step 2 no longer does — see the next row |
 | `min-width: 769px and max-width: 999px` | Step 2's five text inputs wrap to a 2-up grid, and its question pair stacks. **Above this, step 2 keeps the 1440 layout**: five inputs in one row (~152px at 1000, ~156px at 1024, ~187px at 1199) and the questions laid out by the desktop rules. Deliberate — it is what keeps the hero at its cap on step 2. Below 1000 five columns would be ~110px, too narrow for "Email address" |
@@ -262,7 +262,7 @@ Mobile-first base styles, with these override breakpoints (see `styles.css`):
 | `min-width: 1150px` | The step-2 military-benefits sentence stops wrapping. It shares a row with the military question at every desktop width; this is the width from which a single 806px line also FITS beside it (the pair needs 135 + 30 + 806 = 971px of form, and the form is 0.88 × viewport). Below it the sentence takes two lines and the row is preserved — at 1024 you can have the row or the line, not both |
 | `min-width: 1000px` | Step 2 takes the desktop layout: five text inputs in one row and the question pair side by side. Below it, the 2-up grid and the stacked questions |
 | `min-width: 1024px` | **Wide carousel layout** (`1440 × 600` card; the faculty portrait and the phone overflow above the card top) |
-| `min-width: 1200px` | Desktop refinements: 4-across program-finder chips, content-band bg crop, etc. The hero's sizing is owned by its own 769px+ block, not this one, and step 2's question row is owned by the 1000/1150 rows above |
+| `min-width: 1200px` | Desktop refinements: content-band bg crop, etc. The hero's sizing is owned by its own 769px+ block, not this one, and step 2's question row is owned by the 1000/1150 rows above |
 | `max-width: 1280px` / `min-width: 1920px` | `--page-gutter` adjustments only (in `tokens.css`) |
 
 ⚠️ **The 1023 / 1024 boundary is load-bearing for the carousel.** The phone and
@@ -293,7 +293,7 @@ mobile. The bar carries **no top/bottom padding** — content is centered by the
 header total is **~128px** (40 + 88), not 168 — note the hero
 `--hero-fold-reserve` values (§5 hero) were tightened ~40px to match the shorter
 nav (desktop 360→320, tablet 460→420), so the hero now reaches its 755px cap on
-standard desktops (≥~1075px tall) while the program finder stays above the fold.
+standard desktops (≥~1075px tall).
 
 `initNavScroll()` toggles `.main-nav--scrolled` (shrinks the nav) using
 **hysteresis — on above 40px, off below 16px**, not one 24px threshold. A single
@@ -356,22 +356,17 @@ implement it:
 - **`.btn--outline`** (*See all accreditations*): the reverse — the outline
   **fills white** and the text flips dark. Its 2px border exists at rest, so
   nothing resizes.
-- **`.btn--primary`** (both red buttons — stats *See all Capella programs* and
-  the program finder's *Explore my program*): red fill → **white fill with red
-  text**, matching the utility bar's *Request information*. This is on the
-  variant, so both red buttons behave the same; it replaced an earlier
-  stats-only rule that inverted to a transparent white ring.
-- **`.chip`** (program finder,
-  [`2001:335`](https://www.figma.com/design/mqSJTp9qWvsAU8n08FFlk9/UI-Elements-for-Homepage-Proto--Copy-?node-id=2001-335)):
+- **`.btn--primary`** (stats *See all Capella programs*): red fill → **white
+  fill with red text**, matching the utility bar's *Request information*. This
+  is on the variant rather than a stats-specific rule, so any future red button
+  matches it. (It used to pair with the program finder's *Explore my program*,
+  which went with that section.)
 
-  | State | Fill | Border |
-  | --- | --- | --- |
-  | rest | `--color-chip-rest` `#4f4f4f` | none (transparent) |
-  | hover | transparent | 2px `--color-chip-hover-border` `#8e8e8e` |
-  | selected (`.chip--active`) | transparent | 2px `--color-stat-blue` `#94b7bb` |
-
-  This is the **inverse** of the original implementation (which was outlined at
-  rest and filled on hover) — don't "fix" it back.
+`.chip` — the program finder's degree-level pills — was removed with that
+section, along with its `--color-chip-*` and `--radius-chip` tokens. It was
+specced at
+[`2001:335`](https://www.figma.com/design/mqSJTp9qWvsAU8n08FFlk9/UI-Elements-for-Homepage-Proto--Copy-?node-id=2001-335)
+and is recoverable from git history if a chip component is ever needed again.
 
 ### Stats section hover states
 
@@ -388,17 +383,14 @@ Specced in
   purpose**, so it outranks `.glass-card:hover`, which would otherwise keep its
   translucent white wash and defeat the solid fill.
 - The arrow is `stroke="currentColor"`, so setting `color` recolours it.
-- The CTA's hover was later moved **onto `.btn--primary`** by request, so it and
-  the program finder's red button match. There is no stats-specific rule for it
-  any more.
+- The CTA's hover was later moved **onto `.btn--primary`** by request, so every
+  red button matches. There is no stats-specific rule for it any more.
 - `.glass-card`'s diagonal shine sweep was **removed** (it was invisible against
   the new white fill). `.glass-card` is used only by these four cards, so the
   `::before` rules were deleted outright rather than scoped.
 
-⚠️ **Rings are inset `box-shadow`s, and the chip's rest border is a transparent
-2px, both for the same reason:** the element must not change size between
-states. A real 0→2px border makes buttons resize and the whole chip row jiggle
-on hover.
+⚠️ **Rings are inset `box-shadow`s** so the element does not change size
+between states. A real 0→2px border makes buttons resize on hover.
 - ⚠️ **The pill's padding replaces the list gap — don't "restore" the gap.**
   `.main-nav__links` went from `gap: 30px` to `gap: 2px` when the links took on
   their own inline padding, which keeps text-to-text spacing at the same 30px
@@ -491,10 +483,11 @@ wins in every state and the hero is a flat 912px, but at 1280×800 it runs
 which also covers what it costs (the photo re-crops) and why that was the trade
 chosen.
 
-⚠️ **The reserve no longer accounts for the program finder.** It used to: the
-hero was sized to keep the finder above the fold. The RFI form is now *in* the
-hero, so the form is the thing that has to be reachable, and capping the hero at
-the design height is what achieves that. Don't re-add finder-sized reserve
+⚠️ **The reserve does not account for anything below the hero.** It used to be
+sized to keep the program finder above the fold; that section has since been
+removed, and the RFI form is *in* the hero, so the form is the thing that has
+to be reachable. Capping the hero at the design height is what achieves that.
+Don't re-add finder-sized reserve
 values — that shrinks the hero and squeezes the form.
 
 The hero content is **top-anchored and left-aligned** in the same
@@ -635,8 +628,7 @@ leaves for it (16px padding + 15px icon + 8px gap) on the BOX, so the hint is
 bounded too — on a narrow column it would otherwise run underneath. Measured
 after the fix: 0.00px offset from centre at 375, 1200 and 1440.
 
-(The `.program-finder__select` below the hero still uses a background-image
-chevron. That is correct *there* — it is a single-line select with no hint, so
+(chevron. That is correct *there* — it is a single-line select with no hint, so
 its line box and its field box are the same thing.)
 
 The component also defines a 12px **helper-text** line below the shell. It is
@@ -1012,15 +1004,15 @@ All live in `main.js`, initialized on `DOMContentLoaded`. Every one is
 
 | Function | What it does | Trigger |
 | --- | --- | --- |
-| `initTextReveal()` | Splits target headings into per-word spans (`.word` mask + `.word__inner`) that rise up from behind a clip mask, staggered via `--word-index`. **`TEXT_REVEAL_SELECTORS` is deliberately down to two headings** — hero + stats. The tiles, accreditation, action-CTA and program-finder ("Catch what you're chasing") headings were all removed by request; don't add them back unless asked. | IntersectionObserver (per heading) |
+| `initTextReveal()` | Splits target headings into per-word spans (`.word` mask + `.word__inner`) that rise up from behind a clip mask, staggered via `--word-index`. **`TEXT_REVEAL_SELECTORS` is deliberately down to two headings** — hero + stats. The tiles, accreditation, action-CTA and carousel headings were all removed by request; don't add them back unless asked. (The program finder's was on the list too, until that section was removed.) | IntersectionObserver (per heading) |
 | `initRevealAnimations()` | Fade-up for elements with `.reveal`. Optional stagger via `data-reveal-delay="N"` (× 80ms). | IntersectionObserver |
 | Carousel card reveal (in `initCarousel()`) | Marks the card `.is-visible`; the movement itself is `initCardScroll()` below. The card's **inner text does not animate** — it rides in with the card. (An earlier version staggered title → body → button; removed by request.) | IntersectionObserver (first view) + `goTo()` + safety timeout |
 | `initCardScroll()` | **Scroll-driven** (scrubbed, not timed) slide-in for the carousel cards: their `translate` tracks the carousel's position in the viewport, spread over ~90% of a viewport height so it's slow. **Ratcheted** — it only ever moves toward settled, so scrolling back up never pushes the cards out again. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
 | `initCountUp()` | Animates the stats numbers (40 / 80 / 1,530+ / 63%) counting up with a custom cubic-bezier ease. Preserves prefixes/suffixes/grouping. | IntersectionObserver (threshold 0.4) |
 | `initParallax()` | Translates the content-band background image on scroll for depth. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
 | `initHeroParallax()` | The ONLY motion on the hero photo (a 13s ambient Ken Burns zoom/pan was removed — it read as the wall moving on its own). The hero is one frame now, so the **whole photo** (`.hero__bg-photo`) drifts together. Driven off `window.scrollY` so it responds from the first scroll pixel; drifts it down up to 12px. Overshoot comes only from the CSS `scale(1.05)` — see §3a before changing either number. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
-| `initContentParallax()` | Floats `.program-finder` (factor 0.2) up as you scroll, **capped so it can never cover the hero form** (§7a). **Driven off `window.scrollY`, NOT off each element's `getBoundingClientRect().top`** — a viewport-relative formula is already non-zero for anything on screen at load, which shoved the hero headline ~100px above its laid-out position. Must read 0 at `scrollY === 0`. ⚠️ **It deliberately skips `.hero__content` whenever `.hero__rfi` is present** (i.e. always, now): the copy would slide up away from a form that stays put, opening a growing gap between a heading and the fields it introduces. The form itself is excluded from every parallax on purpose — drifting selects and inputs are miserable to use. The old `heroContent` branch and its `offsetTop - 16` clip cap are still in the function for whenever the hero goes back to being purely decorative. | `scroll`/`resize`, throttled with `requestAnimationFrame`; plus a `ResizeObserver` for the cap |
-| `initHeroRfi()` | The hero RFI's step 1 ⇄ step 2 swap (toggles `hidden` on `[data-rfi-panel]`, syncs `.rfi__step--current` + `aria-current` on the stepper, whose labels are **buttons that navigate** — §5e); the **gated degree → area → specialisation chain** (§5d), whose options read the **same `SPECIALIZATIONS` map the program finder uses** so the two can't drift apart; the **conditional step-1 follow-ups** and the military-benefits follow-up (§5a); **per-field error / success / disabled states** (§5b); and the **animated hero resize** that lets the section hug the current step (§5c). Step 1 gates itself rather than calling `reportValidity()`, because the form is `novalidate` (so "Learn program details" — a next, not a submit — doesn't fire browser bubbles); the gate covers the three selects, any *visible* radio group, and the nursing dead end. Every step change focuses with `{ preventScroll: true }`: the panels are different heights, so a plain `focus()` scrolls the page to chase the field and drags the headline off screen. | direct listeners on the next/back/submit buttons, plus `change` on the selects/radios and `blur`/`input` on the text fields |
+| `initContentParallax()` | **Inert on this page, by design.** It floats `.hero__content` up as you scroll, but deliberately skips it whenever `.hero__rfi` is present — i.e. always, now — because the copy would slide up away from a form that stays put, opening a growing gap between a heading and the fields it introduces. The form is excluded from every parallax on purpose: drifting selects and inputs are miserable to use. So the function returns immediately; it is kept for whenever the hero goes back to being purely decorative. It used to also float the program finder, which is where all its complexity lived (§7a). **Driven off `window.scrollY`, NOT `getBoundingClientRect().top`** — a viewport-relative formula is non-zero for anything on screen at load, which shoved the headline ~100px above its laid-out position. | `scroll`/`resize`, throttled with `requestAnimationFrame` |
+| `initHeroRfi()` | The hero RFI's step 1 ⇄ step 2 swap (toggles `hidden` on `[data-rfi-panel]`, syncs `.rfi__step--current` + `aria-current` on the stepper, whose labels are **buttons that navigate** — §5e); the **gated degree → area → specialisation chain** (§5d), whose options read the **`SPECIALIZATIONS` map** at the top of `main.js` (it was shared with the program finder before that section was removed, and is now the RFI's alone); the **conditional step-1 follow-ups** and the military-benefits follow-up (§5a); **per-field error / success / disabled states** (§5b); and the **animated hero resize** that lets the section hug the current step (§5c). Step 1 gates itself rather than calling `reportValidity()`, because the form is `novalidate` (so "Learn program details" — a next, not a submit — doesn't fire browser bubbles); the gate covers the three selects, any *visible* radio group, and the nursing dead end. Every step change focuses with `{ preventScroll: true }`: the panels are different heights, so a plain `focus()` scrolls the page to chase the field and drags the headline off screen. | direct listeners on the next/back/submit buttons, plus `change` on the selects/radios and `blur`/`input` on the text fields |
 | Card hover scale | CSS-only `transform: scale(1.02)` on `.stats-section__program:hover` (replaced the removed VanillaTilt 3D tilt — it caused a "jiggle"). Kept deliberately, on top of the card's white hover fill. Disabled under reduced-motion. | hover |
 
 > **Removed:** `initTilt()` / VanillaTilt. The cursor-following 3D tilt on the
@@ -1077,50 +1069,28 @@ All live in `main.js`, initialized on `DOMContentLoaded`. Every one is
   mask fade — the area above stays page-black. Adjust `--content-bg-top` to move
   the desk's start up/down.
 
-### 7a. The program finder's drift is capped on the hero form's clearance
+### 7a. (removed) The program finder's drift cap
 
-`.program-finder` drifts **up**, so it rides over the hero's **bottom** edge.
-That edge used to be spare photo. It now holds the RFI form's action buttons, and
-the full 120px travel covered them at every breakpoint — by 26px on desktop
-step 1, 50px on step 2, and 72px on mobile, where the only slack is the panel's
-48px bottom padding.
+**The program finder section was removed**, and with it the most intricate
+piece of scroll logic on the page. Recorded here because the constraint it
+solved will come straight back if anything is ever floated over the hero
+again.
 
-`measureFinderRoom()` now caps the travel at the empty space actually below the
-form: `hero.offsetHeight − actionsBottom − 16`. It measures from
-`.rfi__panel:not([hidden]) .rfi__actions` — the buttons are the real constraint,
-and measuring the panel's own box instead would throw away the mobile panel's
-bottom padding, which is legitimately coverable. `offsetTop`/`offsetHeight` are
-layout values, so they ignore the `translate` this function applies and the read
-can't feed back on itself.
+The finder drifted **up**, so it rode over the hero's **bottom** edge — which
+holds the RFI form's action buttons. The full 120px of travel covered them at
+every breakpoint (26px on desktop step 1, 50px on step 2, 72px on mobile), so
+`measureFinderRoom()` capped the travel at the space actually below the form
+and **recomputed it every frame**. Caching it failed twice: a step-change hook
+fired before the conditional reveals had reflowed, and a `ResizeObserver` was
+blind to a step change that moved the buttons inside a hero whose height was
+pinned.
 
-Result: a guaranteed **16px minimum clearance** everywhere, with the parallax
-still running at full strength where there's room (step 1 with no follow-ups
-showing reaches the whole 120px; step 2 with the benefits question caps at 48).
+All of it is gone: `measureFinderRoom()`, the observer, and the
+`rfi:stepchange` custom event that existed only to re-run it. `showStep()` no
+longer dispatches that event — nothing listened to it.
 
-⚠️ **The clearance is measured every frame inside `update()`, never cached.**
-Two attempts at caching it both shipped stale values:
-
-1. A step-change hook fired *before* the conditional reveals had reflowed — 6px
-   stale, eating a third of the gutter.
-2. A `ResizeObserver` on the hero and form fixed that, but then the height
-   reservation §5c used to carry pinned the hero to a constant height — so
-   stepping 1 → 2 moved the buttons down inside it while **nothing changed
-   size**. The observer is blind to that, and the finder covered the step-2
-   buttons by 56px. Revealing the benefits question did the same thing inside a
-   pinned panel, for another 8px.
-
-   The reservation is gone (§5c) and the hero resizes again, so an observer
-   *would* see a step change now — but it would see it once per animation
-   frame for the length of the height transition, which is strictly worse than
-   the per-frame recompute below. Leave it uncached.
-
-Enumerating the triggers is a losing game, so the value is simply recomputed
-each frame. The reads are `offsetTop`/`offsetHeight` on three elements and they
-all happen before the function's only write, so there is no read-write thrash.
-The `ResizeObserver`, the `rfi:stepchange` event and a delegated `change`
-listener remain, but only to **re-run** `update()` when the layout shifts while
-the page isn't scrolling — otherwise a shrinking clearance wouldn't apply until
-the next scroll.
+⚠️ **If you float anything over the hero again, it needs this cap.** The hero's
+bottom edge is not spare photo; it is where the form's buttons live.
 
 ---
 
@@ -1140,15 +1110,13 @@ the next scroll.
 - **Semantics already in place:**
   - Carousel dots are `role="tab"` with `aria-selected`; the viewport is
     keyboard-focusable (`tabindex=0`) with ←/→ arrow support.
-  - Program-finder chips are `role="tab"` controlling a `role="tabpanel"` that is
-    `hidden` until expanded.
   - Mobile menu button uses `aria-expanded` / `aria-controls`; the panel toggles
     the `hidden` attribute.
   - Decorative images use `alt=""`; meaningful images have descriptive `alt`.
     Decorative background containers use `aria-hidden="true"`.
 - **Things to watch / improve:**
   - Focus styles: confirm visible focus rings on all interactive elements
-    (links, chips, dots, buttons) before launch — verify against brand styling.
+    (links, dots, buttons) before launch — verify against brand styling.
   - Baked-in copy: the WNBA partnership lockups carry their "official higher
     learning partner" line as pixels, so it can't be resized, translated or read
     by a screen reader — the `alt` text is the only accessible copy of it.
@@ -1214,12 +1182,12 @@ browsers:
 | Carousel card slide-in (direction / distance / trigger) | `.carousel-reveal` on `.carousel__card` in `index.html`; `.carousel-reveal` rule in `css/styles.css` (`translate: 18% 0`); `revealSlide()` + safety timeout in `initCarousel()` (§7) |
 | Stat numbers or count-up speed | the markup values + `data-count-duration` attr (`js/main.js`) |
 | Stat number size / overlap | `.stats-section__value` font is `min(clamp(…12.8vw…), 44cqi)`; each `.stats-section__stat` is a container so the value scales to its cell and can't overflow into the next stat |
-| Hero height | desktop: `min-height: min(var(--hero-height), calc(100svh - var(--hero-fold-reserve)))` in the `769px+` block; mobile: **no** `min-height` at all, the hero is content-tall (§5). The reserve is just the header now — it no longer reserves room for the program finder |
+| Hero height | desktop: `min-height: min(var(--hero-height), calc(100svh - var(--hero-fold-reserve)))` in the `769px+` block; mobile: **no** `min-height` at all, the hero is content-tall (§5). The reserve is just the header now |
 | Where the desk background starts | `--content-bg-top` on `.content-band__bg` (§7) |
 | Parallax strength | amplitude factor in `initParallax()` + CSS overshoot (§7) |
 | Hero photo parallax (amount / cap) | `initHeroParallax()` in `js/main.js` (factor `0.08` + **8px** cap, driven off `window.scrollY`); overshoot = `scale(1.05)` on `.hero__bg-photo`, and because `object-position` pins the top edge that overshoot is the entire budget — sized for the **shortest** container it runs on (mobile's 568px photo band, not desktop — see §3a) |
 | Which part of the photo stays in frame | `object-position` on `.hero__bg-image` (`center top`) and its `769px+` override (`right top`) — §3a. Centring it crops her face off at several common widths |
-| Hero RFI copy, fields, or step behaviour | `index.html` `.hero__rfi` (markup), `.rfi*` / `.rfi-field*` / `.rfi-radio*` blocks in `css/styles.css`, `initHeroRfi()` in `js/main.js`. The specialization options come from `SPECIALIZATIONS` at the top of `main.js` — shared with the program finder |
+| Hero RFI copy, fields, or step behaviour | `index.html` `.hero__rfi` (markup), `.rfi*` / `.rfi-field*` / `.rfi-radio*` blocks in `css/styles.css`, `initHeroRfi()` in `js/main.js`. The specialization options come from `SPECIALIZATIONS` at the top of `main.js` |
 | Re-export the hero photo | crop the two boxes in §3a out of the source and save as WebP; the layer classes `.hero__bg-red` / `.hero__bg-people` are **gone** — there is one `.hero__bg-photo` now |
 | Hero growing / shrinking between steps, and the speed of it | `settleHeroHeight()` in `initHeroRfi()` drives it; the duration and curve are the `transition` on `.hero` (§5c). The hero hugs the current state — an earlier build reserved the tallest state's height instead, and §5c says why that was dropped |
 | Program finder riding over the hero buttons | `measureFinderRoom()` in `initContentParallax()` — the drift is capped on the form's clearance, recomputed every frame (§7a) |

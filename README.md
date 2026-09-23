@@ -41,7 +41,7 @@ css/
                    #   nav interaction states
   styles.css       # All styles (mobile-first, @imports tokens.css)
 js/
-  main.js          # Carousel, program finder, and all scroll/reveal animations
+  main.js          # Carousel and all scroll/reveal animations
 public/assets/     # Committed image assets (SVG / PNG / JPG / WebP)
   videos/          # CTA band background clip — 3 encodes, each MP4 + WebM
 HANDOFF.md         # Engineering handoff: gotchas, breakpoints, asset contracts
@@ -56,10 +56,9 @@ animation:
 | --- | --- |
 | `initCarousel` | Featured-story carousel — dots, swipe, keyboard, card reveal |
 | `initHeroRfi` | The hero's integrated 2-step RFI form — step swap, stepper state, the gated Degree→Area→Specialization chain, the conditional RN-licence / learning-format questions, and per-field error/success/disabled states |
-| `initProgramFinder` | Degree-level chips + dependent Area/Specialization selects |
 | `initRevealAnimations` / `initTextReveal` | Fade-up on scroll; per-word masked heading reveal |
 | `initCountUp` | Stat numbers counting up |
-| `initParallax` / `initHeroParallax` / `initContentParallax` / `initCardScroll` | Scroll-driven motion (content band, hero photo, program-finder drift, carousel card slide-in). The hero *copy* no longer drifts — it holds the RFI form |
+| `initParallax` / `initHeroParallax` / `initCardScroll` | Scroll-driven motion (content band, hero photo, carousel card slide-in). The hero *copy* no longer drifts — it holds the RFI form, and `initContentParallax` is inert for that reason |
 | `initNavScroll` / `initMobileNav` | Sticky-nav shrink; hamburger panel |
 | `initMegaMenu` / `initMobileMenuTree` | Desktop dropdown positioning; the mobile panel's nested menus |
 | `initCtaVideos` | Background video in the CTA band — encode tier, lazy-load, pause offscreen |
@@ -96,7 +95,7 @@ before replacing them:
   (desktop + mobile in one frame).
 - **Jake's page updates** —
   [Figma — UI Elements for Homepage Proto](https://www.figma.com/design/h3IvZdQj2uH5bm7JPUD89a/UI-Elements-for-Homepage-Proto?node-id=50-21184)
-  — the nav dropdown and its activated state, button and chip states, the closing
+  — the nav dropdown and its activated state, button states, the closing
   CTA, and the mobile bottom bar / chat launcher.
 
 ## Browser notes

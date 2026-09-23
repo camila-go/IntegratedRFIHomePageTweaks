@@ -120,10 +120,10 @@ Worth stating, because it is most of the page:
 | Check | Result |
 | --- | --- |
 | Alt text | 34 images, all with `alt`; decorative ones correctly `alt=""` **and** `aria-hidden` |
-| Accessible names | 44 interactive controls, **zero** unnamed; zero nameless links |
+| Accessible names | 39 interactive controls, **zero** unnamed; zero nameless links |
 | Form labels | Every input/select has a real `<label for>`; every radio group is a `<fieldset>` with a `<legend>` |
 | Error association | Every field has `aria-describedby` → an existing error element; all 8 resolve |
-| Heading structure | One `<h1>`, 28 headings, **no** level jumps |
+| Heading structure | One `<h1>`, 27 headings, **no** level jumps |
 | Landmarks | `header`, `nav` ×2, `main`, `footer` all present |
 | Duplicate IDs | None |
 | `lang` | `en` |
@@ -249,7 +249,7 @@ every width (see the follow-up section).
 
 #### 7. No skip link
 
-Nine focus stops sit before `<main>` (more with a megamenu open) and there is no
+Ten focus stops sit before `<main>` (more with a megamenu open) and there is no
 skip link.
 
 - **Criterion:** 2.4.1 Bypass Blocks (Level A). Arguably satisfied via the
@@ -479,6 +479,18 @@ again.
 `[0-9]{5}` pattern relaxed to accept Canadian, UK and European formats — it
 had been rejecting exactly what the new label invites. `inputmode="numeric"`
 removed, since letters are now valid.
+
+### Page change after this audit (23 Sept)
+
+The **program finder** section was removed at the client's request. It was not
+implicated in any finding, and nothing here was remediated by deleting it —
+but it held interactive controls, so the counts in *What is already correct*
+were re-measured after the removal (39 controls, 27 headings, 34 images) and
+two findings that referenced it no longer apply to any element on the page:
+its degree-level chips were the `role="tab"` set mentioned alongside the
+carousel dots, and its red CTA shared `.btn--primary`'s hover with the stats
+button. Re-verified after the removal: no duplicate IDs, no broken ARIA
+references, no horizontal scroll, and the hero RFI unaffected.
 
 ### Still outstanding
 

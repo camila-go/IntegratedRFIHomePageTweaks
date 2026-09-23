@@ -519,11 +519,6 @@ function initHeroRfi() {
       status.textContent = `Step ${step} of ${steps.length}${heading ? `, ${heading}` : ''}`;
     }
     settleHeroHeight(animate);
-    // The finder's parallax cap depends on where the action buttons sit inside
-    // the hero, and a step change moves them (step 2 stacks more above them).
-    // measureFinderRoom() recomputes every frame anyway, but it only runs while
-    // something is animating the page, so tell it. See measureFinderRoom().
-    form.dispatchEvent(new CustomEvent('rfi:stepchange', { detail: { step } }));
   }
 
   // --- degree -> area -> specialization chain ------------------------------
@@ -771,80 +766,6 @@ function initHeroRfi() {
   );
 }
 
-function initProgramFinder() {
-  const section = document.querySelector('.program-finder');
-  const chips = document.querySelectorAll('.program-finder__chips .chip');
-  const panel = document.getElementById('program-finder-panel');
-  const areaSelect = document.getElementById('area-of-study');
-  const specSelect = document.getElementById('specialization');
-
-  if (!section || !chips.length || !panel || !areaSelect || !specSelect) return;
-
-  function resetSpecialization() {
-    specSelect.innerHTML = '<option value="">Specialization</option>';
-    specSelect.disabled = true;
-    specSelect.value = '';
-  }
-
-  function populateSpecializations(area) {
-    resetSpecialization();
-    const options = SPECIALIZATIONS[area];
-    if (!options) return;
-
-    options.forEach((label) => {
-      const option = document.createElement('option');
-      option.value = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      option.textContent = label;
-      specSelect.appendChild(option);
-    });
-    specSelect.disabled = false;
-  }
-
-  function openPanel(chip) {
-    chips.forEach((button) => {
-      const isActive = button === chip;
-      button.classList.toggle('chip--active', isActive);
-      button.setAttribute('aria-selected', String(isActive));
-    });
-    panel.hidden = false;
-    section.classList.add('program-finder--expanded');
-    areaSelect.focus();
-  }
-
-  function closePanel() {
-    chips.forEach((button) => {
-      button.classList.remove('chip--active');
-      button.setAttribute('aria-selected', 'false');
-    });
-    panel.hidden = true;
-    section.classList.remove('program-finder--expanded');
-    areaSelect.value = '';
-    resetSpecialization();
-  }
-
-  chips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const isActive = chip.classList.contains('chip--active');
-      const isExpanded = !panel.hidden;
-
-      if (isActive && isExpanded) {
-        closePanel();
-        return;
-      }
-
-      openPanel(chip);
-    });
-  });
-
-  areaSelect.addEventListener('change', () => {
-    if (areaSelect.value) {
-      populateSpecializations(areaSelect.value);
-      return;
-    }
-    resetSpecialization();
-  });
-}
-
 function initRevealAnimations() {
   if (prefersReducedMotion) {
     document.querySelectorAll('.reveal').forEach((el) => el.classList.add('is-visible'));
@@ -874,9 +795,9 @@ function initRevealAnimations() {
 }
 
 // Headings that get the masked, word-by-word rise-in-on-scroll effect.
-// Deliberately short: the tiles, accreditation, action-CTA, program-finder
-// ("Catch what you're chasing") and carousel headings were all removed from
-// this list by request — add back only if asked.
+// Deliberately short: the tiles, accreditation, action-CTA and carousel
+// headings were all removed from this list by request — add back only if
+// asked. (The program finder was on it too, until that section was removed.)
 const TEXT_REVEAL_SELECTORS = [
   '.hero__title',
   '.stats-section__title',
@@ -1198,91 +1119,52 @@ function initCardScroll() {
   update();
 }
 
-// Scroll-driven upward parallax for hero content and program-finder: as you
-// scroll down, these sections move up, layering above the people. The offset
-// tracks how far each element has scrolled up the viewport.
+// Scroll-driven upward parallax for the hero copy: as you scroll down it moves
+// up, layering above the people.
+//
+// ⚠️ This is inert on this page, and that is expected. The hero copy only
+// floats when the hero is purely decorative; with the RFI form in the hero it
+// must NOT, because the copy would slide up away from a form that stays put
+// (the form is deliberately excluded — drifting selects and inputs are
+// miserable to use), leaving a growing gap between a heading and the fields it
+// introduces. So `heroContent` is null here and the function returns
+// immediately. It is kept for a hero without the form.
+//
+// The program finder used to be the other half of this, and it carried all the
+// complexity: the finder drifted up over the hero's bottom edge, which holds
+// the RFI's action buttons, so its travel had to be capped on the clearance
+// below the form and re-measured every frame (a ResizeObserver could not see a
+// step change, and a conditional reveal moved the buttons without resizing
+// anything). That section was removed, and `measureFinderRoom()`, the
+// observer, and the `rfi:stepchange` event that existed only to re-run it went
+// with it.
 function initContentParallax() {
   if (prefersReducedMotion) return;
 
-  // The hero copy only floats when the hero is purely decorative. With the RFI
-  // form in the hero it must NOT: the copy would slide up away from a form that
-  // stays put (the form is deliberately excluded — drifting selects and inputs
-  // are miserable to use), leaving a growing gap between a heading and the
-  // fields it introduces.
   const hasHeroForm = Boolean(document.querySelector('.hero__rfi'));
   const heroContent = hasHeroForm ? null : document.querySelector('.hero__content');
-  const programFinder = document.querySelector('.program-finder');
-  const hero = document.querySelector('.hero');
-  const heroForm = document.querySelector('.hero__rfi');
-  if (!heroContent && !programFinder) return;
+  if (!heroContent) return;
 
-  // Drive both off window.scrollY, NOT off each element's viewport position.
-  // Deriving the offset from `vh - rect.top` is non-zero the moment an element
-  // is on screen, so at scrollY 0 the hero content started ~100px above its
-  // laid-out position — the headline rode up off the torsos and the button
-  // covered the faces. Keyed to scrollY, both sit exactly where they're laid
-  // out at the top of the page and only drift as you actually scroll.
-  const HERO_FACTOR = 0.6; // hero text floats up much faster than the page
+  // Driven off window.scrollY, NOT the element's viewport position. Deriving
+  // the offset from `vh - rect.top` is non-zero the moment an element is on
+  // screen, so at scrollY 0 the copy started ~100px above where it was laid
+  // out — the headline rode up off the torsos. Keyed to scrollY it sits
+  // exactly where it is laid out at the top of the page.
+  const HERO_FACTOR = 0.6;
   const HERO_MAX = 260;
-  const FINDER_FACTOR = 0.2;
-  const FINDER_MAX = 120;
-  const FINDER_GUTTER = 16; // never let the finder come closer than this
-
-  // The finder drifts UP, so it rides over the hero's BOTTOM edge. That edge
-  // used to be empty photo, but it now holds the RFI form's action buttons, and
-  // the full 120px travel covered them at every breakpoint (26px on desktop
-  // step 1, 50px on step 2, 72px on mobile). So the travel is capped at however
-  // much empty space actually sits below the form.
-  //
-  // Measured from `.rfi__actions` — the buttons are the real constraint, and on
-  // mobile the panel's own 48px bottom padding is legitimately coverable space
-  // that measuring the panel's box would have thrown away.
-  //
-  // offsetTop/offsetHeight are LAYOUT values, so they ignore the `translate`
-  // this function is applying — reading them here can't feed back on itself.
-  let finderRoom = FINDER_MAX;
-
-  function measureFinderRoom() {
-    finderRoom = FINDER_MAX;
-    if (!hero || !heroForm) return;
-    const actions = heroForm.querySelector('.rfi__panel:not([hidden]) .rfi__actions');
-    const anchor = actions || heroForm;
-    let bottom = anchor.offsetHeight;
-    for (let node = anchor; node && node !== hero; node = node.offsetParent) {
-      bottom += node.offsetTop;
-    }
-    finderRoom = Math.max(0, Math.min(FINDER_MAX, hero.offsetHeight - bottom - FINDER_GUTTER));
-  }
 
   let ticking = false;
   const update = () => {
     ticking = false;
-    // Measured every frame, on purpose. Trying to cache this and invalidate on
-    // "the events that matter" failed twice: a step change moves the buttons
-    // without resizing anything (ResizeObserver blind), and a conditional
-    // reveal inside a panel whose height is pinned moves them without either a
-    // step change OR a resize. Enumerating the triggers is a losing game, so
-    // the value is simply never cached. The reads are offsetTop/offsetHeight on
-    // three elements and they all happen BEFORE this function's only write, so
-    // there is no read-write thrash inside the frame.
-    measureFinderRoom();
     const y = window.scrollY || document.documentElement.scrollTop || 0;
-
-    if (heroContent) {
-      // The hero has `overflow: hidden`, so cap the travel at the content's own
-      // laid-out distance from the hero's top edge (less a little breathing
-      // room). Without this the headline clips against the hero's top on short
-      // heroes — the mobile hero only leaves ~110px of room, versus ~290 on
-      // desktop. offsetTop is a layout value, so `translate` doesn't skew it.
-      const room = Math.max(0, heroContent.offsetTop - 16);
-      const offset = Math.min(y * HERO_FACTOR, room, HERO_MAX);
-      heroContent.style.translate = `0 ${-offset.toFixed(2)}px`;
-    }
-
-    if (programFinder) {
-      const offset = Math.min(y * FINDER_FACTOR, finderRoom);
-      programFinder.style.translate = `0 ${-offset.toFixed(2)}px`;
-    }
+    // The hero has `overflow: hidden`, so cap the travel at the content's own
+    // laid-out distance from the hero's top edge (less a little breathing
+    // room). Without this the headline clips against the hero's top on short
+    // heroes — the mobile hero only leaves ~110px of room, versus ~290 on
+    // desktop. offsetTop is a layout value, so `translate` doesn't skew it.
+    const room = Math.max(0, heroContent.offsetTop - 16);
+    const offset = Math.min(y * HERO_FACTOR, room, HERO_MAX);
+    heroContent.style.translate = `0 ${-offset.toFixed(2)}px`;
   };
 
   const onScroll = () => {
@@ -1290,23 +1172,6 @@ function initContentParallax() {
     ticking = true;
     requestAnimationFrame(update);
   };
-
-  // update() measures the clearance itself, so these exist only to RE-RUN it
-  // when the layout changes while the page is not scrolling — otherwise a
-  // shrinking clearance would not be applied until the next scroll event, and
-  // the finder would sit over the buttons until then.
-  if (typeof ResizeObserver === 'function') {
-    const observer = new ResizeObserver(onScroll);
-    if (hero) observer.observe(hero);
-    if (heroForm) observer.observe(heroForm);
-  }
-  if (heroForm) {
-    heroForm.addEventListener('rfi:stepchange', onScroll);
-    // Every conditional reveal in this form is driven by a select or radio
-    // change, so one delegated listener covers all of them — including the ones
-    // that move the buttons without resizing anything the observer can see.
-    heroForm.addEventListener('change', onScroll);
-  }
 
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll, { passive: true });
@@ -1965,7 +1830,6 @@ function initFooterPartners() {
 document.addEventListener('DOMContentLoaded', () => {
   initCarousel();
   initHeroRfi();
-  initProgramFinder();
   initTextReveal();
   initRevealAnimations();
   initCountUp();
