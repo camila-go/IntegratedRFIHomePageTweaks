@@ -3895,7 +3895,17 @@ button {
    landscape layout where the portrait overflows the top of the gray panel. */
 @media (min-width: 1024px) {
   .carousel {
-    padding-block: 0;
+    /* Top padding, not `padding-block: 0`, and it is load-bearing twice over.
+       In this layout the phone mockup and the faculty portrait overflow ABOVE
+       the card — the phone by 89px. With no padding the card's top sat exactly
+       on the hero's bottom edge, so that overflow hung over the red hero
+       instead of the black band, and the card had no breathing room at all.
+       (It used to have the program-finder section between the two; that
+       section was removed.) 120px clears the 89px overflow and leaves ~31px
+       of black above the phone. Bottom stays 0 — the band's own spacing
+       handles that side. */
+    padding-top: 120px;
+    padding-bottom: 0;
   }
 
   .carousel__viewport {

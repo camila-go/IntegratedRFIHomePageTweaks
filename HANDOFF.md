@@ -1179,6 +1179,7 @@ browsers:
 | A breakpoint's layout | the matching `@media` block in `css/styles.css` (§4) |
 | Which headings animate in | `TEXT_REVEAL_SELECTORS` in `js/main.js` |
 | Carousel behavior / drag | `initCarousel()` in `js/main.js` |
+| Space above the carousel card | `.carousel { padding-top }` — 24px base, 32px at 768, **120px at 1024+**. The wide layout is the one that matters: the phone mockup and faculty portrait overflow ~89px above the card there, so with the old `padding-block: 0` that overflow hung over the hero and the card had no clearance at all. It was less obvious while the program-finder section sat between the two; that section is gone |
 | Carousel card slide-in (direction / distance / trigger) | `.carousel-reveal` on `.carousel__card` in `index.html`; `.carousel-reveal` rule in `css/styles.css` (`translate: 18% 0`); `revealSlide()` + safety timeout in `initCarousel()` (§7) |
 | Stat numbers or count-up speed | the markup values + `data-count-duration` attr (`js/main.js`) |
 | Stat number size / overlap | `.stats-section__value` font is `min(clamp(…12.8vw…), 44cqi)`; each `.stats-section__stat` is a container so the value scales to its cell and can't overflow into the next stat |
