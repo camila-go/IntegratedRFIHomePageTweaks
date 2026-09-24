@@ -10,6 +10,10 @@ detail behind everything below, and [`DEBUGGING.md`](DEBUGGING.md) when
 something looks broken — it is a symptom-first runbook covering the traps this
 codebase has already hit.
 
+> ⚠️ **This prototype is behind a password gate (`potato`).** It is a
+> deterrent, not security — the page is served in full to anyone who requests
+> the URL. Read [`ACCESS.md`](ACCESS.md) before treating it as private.
+
 ## Getting started
 
 ```bash

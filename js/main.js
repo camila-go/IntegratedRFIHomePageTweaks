@@ -1827,7 +1827,89 @@ function initFooterPartners() {
   render();
 }
 
+// Password gate for the unlisted prototype.
+//
+// ⚠️ READ THIS BEFORE TRUSTING IT. This is a DETERRENT, not access control.
+// The entire page is served to anyone who requests it — `curl` returns it in
+// full, and devtools shows it without typing anything. All this does is stop
+// the prototype being casually browsed or stumbled into. If the content
+// genuinely must not be readable by the public, the HOST has to refuse the
+// request (HTTP Basic Auth, or the hosting platform's own password
+// protection). ACCESS.md spells out the options.
+//
+// The password is stored as a SHA-256 hash rather than in plain text. That is
+// worth the three lines — it stops the password itself leaking to anyone who
+// opens the bundle, which matters if it is reused elsewhere — but it is NOT
+// what makes this weak-or-strong. A short dictionary word falls to an offline
+// guess instantly, and the content is readable without the password anyway.
+const GATE_KEY = 'cu-proto-gate';
+const GATE_HASH = 'e91c254ad58860a02c788dfb5c1a65d6a8846ab1dc649631c7db16fef4af2dec';
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function initPasswordGate() {
+  const gate = document.querySelector('[data-pw-gate]');
+  const form = document.querySelector('[data-pw-form]');
+  if (!gate || !form) return;
+
+  const input = form.querySelector('#pw-gate-input');
+  const error = form.querySelector('#pw-gate-error');
+  const locked = () => document.documentElement.classList.contains('is-locked');
+
+  function unlock() {
+    try {
+      sessionStorage.setItem(GATE_KEY, 'unlocked');
+    } catch (e) {
+      // Private mode: they'll be asked again next load. Still unlock now.
+    }
+    document.documentElement.classList.remove('is-locked');
+    // The page was `display: none` a moment ago, so nothing in it has been
+    // laid out. Anything that measured itself on DOMContentLoaded read zeros.
+    // A resize event is what the hero, carousel and parallax all already
+    // listen to for a re-measure, so reuse it rather than inventing a hook.
+    window.dispatchEvent(new Event('resize'));
+    document.getElementById('main-content')?.focus({ preventScroll: true });
+  }
+
+  if (!locked()) return;
+
+  // ⚠️ `crypto.subtle` is undefined on insecure origins — it needs HTTPS or
+  // localhost. On plain http:// over a LAN the hash can't be computed, so
+  // fail CLOSED and say why rather than silently letting everyone in.
+  if (!window.crypto?.subtle) {
+    error.textContent = 'This preview needs to be served over HTTPS to unlock.';
+    error.hidden = false;
+    input.disabled = true;
+    return;
+  }
+
+  input.focus();
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const ok = (await sha256Hex(input.value)) === GATE_HASH;
+    if (ok) {
+      unlock();
+      return;
+    }
+    gate.classList.add('pw-gate--error');
+    error.hidden = false;
+    input.select();
+  });
+
+  // Clear the error as soon as they start correcting it.
+  input.addEventListener('input', () => {
+    gate.classList.remove('pw-gate--error');
+    error.hidden = true;
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initPasswordGate();
   initCarousel();
   initHeroRfi();
   initTextReveal();
