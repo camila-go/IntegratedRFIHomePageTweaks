@@ -20,6 +20,15 @@
          flash of the gate. Kept inline and tiny for the same reason. -->
     <script>
       (function () {
+        // The cookie is set by the Vercel edge middleware after Basic Auth.
+        // Honouring it is what stops an authenticated visitor being asked for
+        // the same password a second time by the in-page gate. Forging it only
+        // bypasses the in-page gate, which the middleware has already made
+        // redundant — on Vercel you cannot reach this HTML without authing.
+        if (document.cookie.indexOf('cu-proto-gate=unlocked') !== -1) {
+          document.documentElement.classList.remove('is-locked');
+          return;
+        }
         try {
           if (sessionStorage.getItem('cu-proto-gate') === 'unlocked') {
             document.documentElement.classList.remove('is-locked');
