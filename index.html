@@ -1,9 +1,43 @@
 <!doctype html>
-<html lang="en">
+<!-- ⚠️ `is-locked` is hard-coded on <html> ON PURPOSE — the gate fails CLOSED.
+     The page is hidden by default and JS has to actively unhide it; if the
+     inline script below never runs (JS disabled, script blocked, error), the
+     content stays hidden rather than being exposed. Don't "tidy" this into a
+     class that JS adds. See the gate's own note below, and read the limits in
+     ACCESS.md before relying on this for anything. -->
+<html lang="en" class="is-locked">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Capella University</title>
+
+    <!-- Unlisted prototype: keep it out of search results entirely. This is
+         independent of the gate — a crawler that ignores the gate still gets
+         told not to index. -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+
+    <!-- Runs before the stylesheet so an already-unlocked visitor never sees a
+         flash of the gate. Kept inline and tiny for the same reason. -->
+    <script>
+      (function () {
+        // The cookie is set by the Vercel edge middleware after Basic Auth.
+        // Honouring it is what stops an authenticated visitor being asked for
+        // the same password a second time by the in-page gate. Forging it only
+        // bypasses the in-page gate, which the middleware has already made
+        // redundant — on Vercel you cannot reach this HTML without authing.
+        if (document.cookie.indexOf('cu-proto-gate=unlocked') !== -1) {
+          document.documentElement.classList.remove('is-locked');
+          return;
+        }
+        try {
+          if (sessionStorage.getItem('cu-proto-gate') === 'unlocked') {
+            document.documentElement.classList.remove('is-locked');
+          }
+        } catch (e) {
+          /* Private mode / blocked storage: stay locked and re-prompt. */
+        }
+      })();
+    </script>
 
     <!-- iOS Safari tints its bottom toolbar to match this. The bottom-bar design
          (Figma 2013:19398) shows that toolbar rendered in Capella red sitting
@@ -153,6 +187,34 @@
     </script>
   </head>
   <body>
+    <!-- Password gate. ⚠️ THIS IS A DETERRENT, NOT SECURITY — the whole page
+         ships to the browser and `curl` returns it in full regardless of what
+         is typed here. It keeps the prototype from being casually browsed or
+         stumbled into; it does not protect the content. For real protection
+         the host has to refuse the request (HTTP Basic Auth / the platform's
+         own password protection). See ACCESS.md. -->
+    <div class="pw-gate" data-pw-gate>
+      <form class="pw-gate__card" data-pw-form>
+        <h1 class="pw-gate__title">Capella prototype</h1>
+        <p class="pw-gate__blurb">This preview is private. Enter the password to continue.</p>
+        <label class="pw-gate__label" for="pw-gate-input">Password</label>
+        <input
+          class="pw-gate__input"
+          id="pw-gate-input"
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          aria-describedby="pw-gate-error"
+          required
+        />
+        <!-- role=alert so a wrong password is announced, not just shown. -->
+        <p class="pw-gate__error" id="pw-gate-error" role="alert" hidden>
+          That password isn&rsquo;t right. Try again.
+        </p>
+        <button class="pw-gate__submit" type="submit">Enter</button>
+      </form>
+    </div>
+
     <!-- Ten focus stops sit between here and <main> (many more with a megamenu
          open). The <main> landmark covers screen-reader users; this covers
          sighted keyboard users. Invisible until focused — see `.skip-link`. -->

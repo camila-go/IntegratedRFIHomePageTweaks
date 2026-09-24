@@ -6,6 +6,130 @@
   box-sizing: border-box;
 }
 
+/* --- Password gate --------------------------------------------------------
+   ⚠️ A DETERRENT, NOT SECURITY. The markup below is shipped in full to every
+   visitor and `curl` returns the whole page whatever is typed. This stops the
+   prototype being casually browsed; it does not protect the content. Real
+   protection has to come from the host refusing the request. See ACCESS.md.
+
+   `display: none` on the siblings, not `visibility` or an opaque overlay: the
+   content must be out of the accessibility tree and out of the tab order
+   while locked, or a screen-reader user or anyone pressing Tab walks straight
+   past the gate into the page. */
+.is-locked body > *:not(.pw-gate) {
+  display: none !important;
+}
+
+.is-locked,
+.is-locked body {
+  overflow: hidden;
+}
+
+/* The gate only exists while locked. Unlocking removes `is-locked` from
+   <html>, which takes the gate with it — no leftover node to tab into. */
+.pw-gate {
+  display: none;
+}
+
+.is-locked .pw-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--color-uni-black);
+}
+
+.pw-gate__card {
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 100%);
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #2b2d2c;
+}
+
+.pw-gate__title {
+  margin: 0 0 8px;
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-size: var(--text-h5);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.pw-gate__blurb {
+  margin: 0 0 24px;
+  color: var(--color-neutral-100);
+  font-family: var(--font-body);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+}
+
+.pw-gate__label {
+  margin-bottom: 6px;
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-size: var(--text-ui-sm);
+  font-weight: 600;
+}
+
+.pw-gate__input {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--field-outline);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+}
+
+.pw-gate__input:focus-visible {
+  outline: 2px solid var(--field-focus-ring);
+  outline-offset: 1px;
+}
+
+.pw-gate--error .pw-gate__input {
+  border-color: var(--field-error-line);
+}
+
+.pw-gate__error {
+  margin: 8px 0 0;
+  color: var(--field-error-line);
+  font-family: var(--font-body);
+  font-size: var(--text-ui-sm);
+  line-height: 1.5;
+}
+
+.pw-gate__error[hidden] {
+  display: none;
+}
+
+.pw-gate__submit {
+  margin-top: 24px;
+  min-height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--color-uni-red);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+
+.pw-gate__submit:hover {
+  background: var(--color-white);
+  color: var(--color-uni-red);
+}
+
+.pw-gate__submit:focus-visible {
+  outline: var(--nav-focus-ring);
+  outline-offset: 2px;
+}
+
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
@@ -3895,7 +4019,17 @@ button {
    landscape layout where the portrait overflows the top of the gray panel. */
 @media (min-width: 1024px) {
   .carousel {
-    padding-block: 0;
+    /* Top padding, not `padding-block: 0`, and it is load-bearing twice over.
+       In this layout the phone mockup and the faculty portrait overflow ABOVE
+       the card — the phone by 89px. With no padding the card's top sat exactly
+       on the hero's bottom edge, so that overflow hung over the red hero
+       instead of the black band, and the card had no breathing room at all.
+       (It used to have the program-finder section between the two; that
+       section was removed.) 120px clears the 89px overflow and leaves ~31px
+       of black above the phone. Bottom stays 0 — the band's own spacing
+       handles that side. */
+    padding-top: 120px;
+    padding-bottom: 0;
   }
 
   .carousel__viewport {
